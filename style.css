@@ -116,3 +116,13 @@ body {
 #sendButton:active {
     transform: translateY(0);
 }
+
+/* Add a small note about hosting */
+.hosting-note {
+    text-align: center;
+    padding: 10px;
+    font-size: 0.8rem;
+    color: #666;
+    background-color: #f8f9fa;
+    border-top: 1px solid #e9ecef;
+}

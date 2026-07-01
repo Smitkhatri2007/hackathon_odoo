@@ -112,4 +112,10 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(() => {
         addMessage("I'm here to be your friend and chat whenever you need someone to talk to!");
     }, 1000);
+    
+    // Add a hosting note
+    const hostingNote = document.createElement('div');
+    hostingNote.className = 'hosting-note';
+    hostingNote.textContent = 'To share with your friend: Save all files in the same folder and open index.html in any web browser';
+    document.querySelector('.chat-container').appendChild(hostingNote);
 });
