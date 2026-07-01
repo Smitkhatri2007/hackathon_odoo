@@ -2,6 +2,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const chatMessages = document.getElementById('chatMessages');
     const userInput = document.getElementById('userInput');
     const sendButton = document.getElementById('sendButton');
+    const autoChatButton = document.getElementById('autoChatButton');
+    const summaryButton = document.getElementById('summaryButton');
+    const resetButton = document.getElementById('resetButton');
 
     // Bot responses
     const botResponses = {
@@ -42,6 +45,22 @@ document.addEventListener('DOMContentLoaded', function() {
         ]
     };
 
+    // Conversation history
+    let conversationHistory = [];
+    let autoChatInterval = null;
+    
+    // Auto chat topics
+    const autoChatTopics = [
+        "How was your day?",
+        "What are you up to today?",
+        "Do you have any plans for the weekend?",
+        "What's something you're looking forward to?",
+        "How do you usually spend your free time?",
+        "What's the best part of being a friend?",
+        "What makes you feel happy?",
+        "How can I help you today?"
+    ];
+
     // Function to add a message to the chat
     function addMessage(text, isUser = false) {
         const messageDiv = document.createElement('div');
@@ -50,6 +69,13 @@ document.addEventListener('DOMContentLoaded', function() {
         messageDiv.textContent = text;
         chatMessages.appendChild(messageDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
+        
+        // Add to conversation history
+        conversationHistory.push({
+            text: text,
+            isUser: isUser,
+            timestamp: new Date()
+        });
     }
 
     // Function to get a random response
@@ -99,6 +125,124 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Function to start auto chat
+    function startAutoChat() {
+        if (autoChatInterval) return;
+        
+        autoChatButton.textContent = "Stop Auto Chat";
+        autoChatInterval = setInterval(() => {
+            const randomTopic = autoChatTopics[Math.floor(Math.random() * autoChatTopics.length)];
+            addMessage(randomTopic, false);
+            
+            // Simulate user response after a delay
+            setTimeout(() => {
+                const responses = [
+                    "That's interesting!",
+                    "I see what you mean.",
+                    "Thanks for sharing that with me.",
+                    "I'm glad to hear that!",
+                    "That sounds fun!"
+                ];
+                const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+                addMessage(randomResponse, true);
+            }, 1000 + Math.random() * 2000);
+        }, 5000); // Send a message every 5 seconds
+    }
+
+    // Function to stop auto chat
+    function stopAutoChat() {
+        if (autoChatInterval) {
+            clearInterval(autoChatInterval);
+            autoChatInterval = null;
+            autoChatButton.textContent = "Start Auto Chat";
+        }
+    }
+
+    // Function to generate summary
+    function generateSummary() {
+        if (conversationHistory.length === 0) {
+            alert("No conversation to summarize yet!");
+            return;
+        }
+
+        // Create a summary container
+        let summaryContainer = document.querySelector('.summary-container');
+        if (!summaryContainer) {
+            summaryContainer = document.createElement('div');
+            summaryContainer.className = 'summary-container';
+            summaryContainer.id = 'summaryContainer';
+            document.querySelector('.chat-container').appendChild(summaryContainer);
+        }
+
+        // Simple summary logic based on conversation
+        let summaryText = "Conversation Summary:\n\n";
+        
+        // Count user vs bot messages
+        const userMessages = conversationHistory.filter(msg => msg.isUser);
+        const botMessages = conversationHistory.filter(msg => !msg.isUser);
+        
+        summaryText += `Total messages: ${conversationHistory.length}\n`;
+        summaryText += `Your messages: ${userMessages.length}\n`;
+        summaryText += `Bot messages: ${botMessages.length}\n\n`;
+        
+        // Analyze sentiment
+        const positiveKeywords = ['happy', 'good', 'great', 'excited', 'love', 'like'];
+        const negativeKeywords = ['sad', 'depressed', 'lonely', 'alone', 'bad', 'angry'];
+        
+        let positiveCount = 0;
+        let negativeCount = 0;
+        
+        conversationHistory.forEach(msg => {
+            const lowerMsg = msg.text.toLowerCase();
+            positiveKeywords.forEach(word => {
+                if (lowerMsg.includes(word)) positiveCount++;
+            });
+            negativeKeywords.forEach(word => {
+                if (lowerMsg.includes(word)) negativeCount++;
+            });
+        });
+        
+        summaryText += `Sentiment Analysis:\n`;
+        if (positiveCount > negativeCount) {
+            summaryText += "Overall: Positive\n";
+        } else if (negativeCount > positiveCount) {
+            summaryText += "Overall: Negative\n";
+        } else {
+            summaryText += "Overall: Neutral\n";
+        }
+        
+        summaryText += `Positive mentions: ${positiveCount}\n`;
+        summaryText += `Negative mentions: ${negativeCount}\n\n`;
+        
+        // Key topics
+        const topics = [];
+        conversationHistory.forEach(msg => {
+            const lowerMsg = msg.text.toLowerCase();
+            if (lowerMsg.includes('friend')) topics.push('friendship');
+            if (lowerMsg.includes('day')) topics.push('daily life');
+            if (lowerMsg.includes('weekend')) topics.push('weekend plans');
+            if (lowerMsg.includes('happy') || lowerMsg.includes('excited')) topics.push('positive feelings');
+        });
+        
+        if (topics.length > 0) {
+            summaryText += `Key topics discussed: ${Array.from(new Set(topics)).join(', ')}\n`;
+        }
+        
+        summaryContainer.textContent = summaryText;
+        summaryContainer.style.display = 'block';
+    }
+
+    // Function to reset conversation
+    function resetConversation() {
+        stopAutoChat();
+        conversationHistory = [];
+        chatMessages.innerHTML = '<div class="message bot-message">Hello! I\'m your friendly chatbot. How are you feeling today?</div>';
+        const summaryContainer = document.getElementById('summaryContainer');
+        if (summaryContainer) {
+            summaryContainer.style.display = 'none';
+        }
+    }
+
     // Event listeners
     sendButton.addEventListener('click', sendMessage);
     
@@ -108,14 +252,19 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    autoChatButton.addEventListener('click', function() {
+        if (autoChatInterval) {
+            stopAutoChat();
+        } else {
+            startAutoChat();
+        }
+    });
+
+    summaryButton.addEventListener('click', generateSummary);
+    resetButton.addEventListener('click', resetConversation);
+
     // Initial bot message
     setTimeout(() => {
         addMessage("I'm here to be your friend and chat whenever you need someone to talk to!");
     }, 1000);
-    
-    // Add a hosting note
-    const hostingNote = document.createElement('div');
-    hostingNote.className = 'hosting-note';
-    hostingNote.textContent = 'To share with your friend: Save all files in the same folder and open index.html in any web browser';
-    document.querySelector('.chat-container').appendChild(hostingNote);
 });

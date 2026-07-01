@@ -117,6 +117,33 @@ body {
     transform: translateY(0);
 }
 
+.controls {
+    display: flex;
+    justify-content: space-around;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-top: 1px solid #e9ecef;
+}
+
+.controls button {
+    padding: 10px 15px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: transform 0.2s;
+}
+
+.controls button:hover {
+    transform: translateY(-2px);
+}
+
+.controls button:active {
+    transform: translateY(0);
+}
+
 /* Add a small note about hosting */
 .hosting-note {
     text-align: center;
@@ -125,4 +152,14 @@ body {
     color: #666;
     background-color: #f8f9fa;
     border-top: 1px solid #e9ecef;
+}
+
+.summary-container {
+    margin-top: 15px;
+    padding: 15px;
+    background-color: #e8f5e9;
+    border-radius: 10px;
+    max-height: 200px;
+    overflow-y: auto;
+    display: none;
 }
