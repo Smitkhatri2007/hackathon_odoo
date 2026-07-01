@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const autoChatButton = document.getElementById('autoChatButton');
     const summaryButton = document.getElementById('summaryButton');
     const resetButton = document.getElementById('resetButton');
+    const saveDataButton = document.getElementById('saveDataButton');
 
     // Bot responses
     const botResponses = {
@@ -60,6 +61,41 @@ document.addEventListener('DOMContentLoaded', function() {
         "What makes you feel happy?",
         "How can I help you today?"
     ];
+
+    // Load saved data on startup
+    function loadSavedData() {
+        try {
+            const savedData = localStorage.getItem('chatbotData');
+            if (savedData) {
+                const data = JSON.parse(savedData);
+                if (data.conversationHistory) {
+                    conversationHistory = data.conversationHistory;
+                    // Rebuild chat display from saved history
+                    chatMessages.innerHTML = '';
+                    conversationHistory.forEach(msg => {
+                        addMessage(msg.text, msg.isUser);
+                    });
+                }
+            }
+        } catch (error) {
+            console.error('Error loading saved data:', error);
+        }
+    }
+
+    // Save data to localStorage
+    function saveData() {
+        try {
+            const dataToSave = {
+                conversationHistory: conversationHistory,
+                lastSaved: new Date().toISOString()
+            };
+            localStorage.setItem('chatbotData', JSON.stringify(dataToSave));
+            alert('Data saved successfully!');
+        } catch (error) {
+            console.error('Error saving data:', error);
+            alert('Failed to save data');
+        }
+    }
 
     // Function to add a message to the chat
     function addMessage(text, isUser = false) {
@@ -262,6 +298,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     summaryButton.addEventListener('click', generateSummary);
     resetButton.addEventListener('click', resetConversation);
+    saveDataButton.addEventListener('click', saveData);
+
+    // Load saved data when page loads
+    loadSavedData();
 
     // Initial bot message
     setTimeout(() => {

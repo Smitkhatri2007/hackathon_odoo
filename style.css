@@ -134,6 +134,7 @@ body {
     cursor: pointer;
     font-weight: bold;
     transition: transform 0.2s;
+    margin: 5px;
 }
 
 .controls button:hover {
@@ -182,4 +183,12 @@ body {
 
 .whatsapp-instructions li {
     margin-bottom: 5px;
+}
+
+.database-info {
+    padding: 10px;
+    background-color: #e3f2fd;
+    border-top: 1px solid #e9ecef;
+    font-size: 0.8rem;
+    text-align: center;
 }
