@@ -163,3 +163,23 @@ body {
     overflow-y: auto;
     display: none;
 }
+
+.whatsapp-instructions {
+    padding: 15px;
+    background-color: #fff8e1;
+    border-top: 1px solid #e9ecef;
+    font-size: 0.9rem;
+}
+
+.whatsapp-instructions p {
+    margin-bottom: 10px;
+    font-weight: bold;
+}
+
+.whatsapp-instructions ol {
+    padding-left: 20px;
+}
+
+.whatsapp-instructions li {
+    margin-bottom: 5px;
+}
