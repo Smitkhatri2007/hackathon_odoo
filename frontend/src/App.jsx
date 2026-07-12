@@ -4,16 +4,15 @@ import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation } f
 // TEAMMATE IMPORTS — add your page imports here
 // =============================================
 // Person 1: Vehicle Management
-// import VehicleList from './pages/VehicleList';
-// import VehicleForm from './pages/VehicleForm';
+import Vehicles from './pages/Vehicles';
+import Drivers from './pages/Drivers';
 
 // Person 2: Driver & Trip Management
-// import DriverList from './pages/DriverList';
-// import TripList from './pages/TripList';
+import Trips from './pages/Trips';
 
 // Person 3: Maintenance, Fuel & Expenses
-// import MaintenanceLogs from './pages/MaintenanceLogs';
-// import FuelLogs from './pages/FuelLogs';
+import Maintenance from './pages/Maintenance';
+import FuelExpense from './pages/FuelExpense';
 
 // Person 4: Dashboard & Reports (DO NOT REMOVE)
 import Dashboard from './pages/Dashboard';
@@ -74,12 +73,15 @@ function NavBar() {
     <nav style={navStyle}>
       <span style={brandStyle}>TransitOps</span>
       {/* Person 1 routes */}
-      {/* <Link to="/vehicles" style={linkStyle(location.pathname === '/vehicles')}>Vehicles</Link> */}
+      <Link to="/vehicles" style={linkStyle(location.pathname === '/vehicles')}>Vehicles</Link>
+      <Link to="/drivers" style={linkStyle(location.pathname === '/drivers')}>Drivers</Link>
+
       {/* Person 2 routes */}
-      {/* <Link to="/drivers" style={linkStyle(location.pathname === '/drivers')}>Drivers</Link> */}
-      {/* <Link to="/trips" style={linkStyle(location.pathname === '/trips')}>Trips</Link> */}
+      <Link to="/trips" style={linkStyle(location.pathname === '/trips')}>Trips</Link>
+
       {/* Person 3 routes */}
-      {/* <Link to="/maintenance" style={linkStyle(location.pathname === '/maintenance')}>Maintenance</Link> */}
+      <Link to="/maintenance" style={linkStyle(location.pathname === '/maintenance')}>Maintenance</Link>
+      <Link to="/fuel-expenses" style={linkStyle(location.pathname === '/fuel-expenses')}>Fuel & Expenses</Link>
 
       {/* Person 4 routes — DO NOT REMOVE */}
       <Link to="/dashboard" style={linkStyle(location.pathname === '/dashboard')}>Dashboard</Link>
@@ -103,14 +105,15 @@ function App() {
         {/* TEAMMATE ROUTES — add your routes below       */}
         {/* ============================================= */}
         {/* Person 1: Vehicle Management */}
-        {/* <Route path="/vehicles" element={<ProtectedRoute><VehicleList /></ProtectedRoute>} /> */}
+        <Route path="/vehicles" element={<ProtectedRoute><Vehicles /></ProtectedRoute>} />
+        <Route path="/drivers" element={<ProtectedRoute><Drivers /></ProtectedRoute>} />
 
         {/* Person 2: Driver & Trip Management */}
-        {/* <Route path="/drivers" element={<ProtectedRoute><DriverList /></ProtectedRoute>} /> */}
-        {/* <Route path="/trips" element={<ProtectedRoute><TripList /></ProtectedRoute>} /> */}
+        <Route path="/trips" element={<ProtectedRoute><Trips /></ProtectedRoute>} />
 
         {/* Person 3: Maintenance, Fuel & Expenses */}
-        {/* <Route path="/maintenance" element={<ProtectedRoute><MaintenanceLogs /></ProtectedRoute>} /> */}
+        <Route path="/maintenance" element={<ProtectedRoute><Maintenance /></ProtectedRoute>} />
+        <Route path="/fuel-expenses" element={<ProtectedRoute><FuelExpense /></ProtectedRoute>} />
 
         {/* ============================================= */}
         {/* Person 4: Dashboard & Reports — DO NOT REMOVE */}
