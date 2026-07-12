@@ -80,6 +80,14 @@ const Vehicles = () => {
       setError('Registration number is required.');
       return;
     }
+    
+    // Indian Registration Number Validation (e.g. MH 12 AB 1234)
+    const indRegRegex = /^[A-Z]{2}[ -]?[0-9]{1,2}[ -]?[A-Z]{0,3}[ -]?[0-9]{4}$/i;
+    if (!indRegRegex.test(form.registrationNumber.trim())) {
+      setError('Please enter a valid Indian Registration Number (e.g., MH 12 AB 1234).');
+      return;
+    }
+
     if (form.maxLoadCapacity <= 0) {
       setError('Max Load Capacity must be greater than 0.');
       return;

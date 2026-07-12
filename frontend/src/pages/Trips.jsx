@@ -9,6 +9,7 @@ export default function Trips() {
   const [vehicles, setVehicles] = useState([]);
   const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Form state
   const [source, setSource] = useState('');
@@ -222,6 +223,11 @@ export default function Trips() {
     </>
   );
 
+  const filteredTrips = trips.filter(t => 
+    t.source.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    t.destination.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div className="page-container animate-fade-in">
       <div style={{ marginBottom: '2rem' }}>
@@ -292,10 +298,19 @@ export default function Trips() {
         </GlassCard>
 
         <GlassCard title="Active Operational Trips">
+          <div style={{ marginBottom: '1.5rem' }}>
+            <input 
+              type="text" 
+              placeholder="Search by source or destination..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-input)', background: 'var(--bg-input)', color: 'var(--text-main)' }}
+            />
+          </div>
           {loading ? (
             <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>Loading operational logs...</div>
           ) : (
-            <ModernTable headers={tableHeaders} data={trips} renderRow={renderRow} emptyMessage="No trips registered in database." />
+            <ModernTable headers={tableHeaders} data={filteredTrips} renderRow={renderRow} emptyMessage="No trips match your search." />
           )}
         </GlassCard>
       </div>
