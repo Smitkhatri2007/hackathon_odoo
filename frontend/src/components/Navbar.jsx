@@ -24,8 +24,12 @@ const Navbar = () => {
           <span className="nav-icon">👤</span> Drivers
         </NavLink>
         {/* TEAMMATE: add your <NavLink> here for Trips */}
-        {/* TEAMMATE: add your <NavLink> here for Maintenance */}
-        {/* TEAMMATE: add your <NavLink> here for Fuel & Expenses */}
+        <NavLink to="/maintenance" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+          <span className="nav-icon">🔧</span> Maintenance
+        </NavLink>
+        <NavLink to="/fuel-expense" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+          <span className="nav-icon">⛽</span> Fuel & Expenses
+        </NavLink>
         {/* TEAMMATE: add your <NavLink> here for Dashboard */}
       </div>
       <div className="navbar-user">
