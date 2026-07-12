@@ -51,7 +51,7 @@ public class ReportService {
                        SUM(t.fuel_consumed)                        AS totalFuel,
                        CASE
                            WHEN SUM(t.fuel_consumed) > 0
-                           THEN ROUND(SUM(t.actual_distance) / SUM(t.fuel_consumed), 2)
+                           THEN ROUND(CAST(SUM(t.actual_distance) / SUM(t.fuel_consumed) AS numeric), 2)
                            ELSE 0
                        END                                         AS kmPerLiter
                 FROM trips t

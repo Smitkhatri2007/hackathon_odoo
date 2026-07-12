@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-
-// Set default base URL for Axios calls
-const API_BASE = 'http://localhost:8080/api';
+import axiosInstance from '../api/axiosInstance';
+import GlassCard from '../components/GlassCard';
+import ModernTable from '../components/ModernTable';
+import Modal from '../components/Modal';
 
 export default function Trips() {
-  // Trips state
   const [trips, setTrips] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [drivers, setDrivers] = useState([]);
@@ -18,7 +17,7 @@ export default function Trips() {
   const [driverId, setDriverId] = useState('');
   const [cargoWeight, setCargoWeight] = useState('');
   const [plannedDistance, setPlannedDistance] = useState('');
-  const [revenue, setRevenue] = useState(''); // Optional bonus field
+  const [revenue, setRevenue] = useState('');
 
   // Modal / Complete Trip state
   const [activeTripForCompletion, setActiveTripForCompletion] = useState(null);
@@ -26,30 +25,27 @@ export default function Trips() {
   const [fuelConsumed, setFuelConsumed] = useState('');
 
   // Notification state
-  const [notification, setNotification] = useState(null); // { type: 'success' | 'danger', message: '' }
+  const [notification, setNotification] = useState(null);
 
-  // Show notification utility
   const showNotification = (type, message) => {
     setNotification({ type, message });
     setTimeout(() => setNotification(null), 5000);
   };
 
-  // Fetch initial data
   const fetchData = async () => {
     setLoading(true);
     try {
       const [tripsRes, vehiclesRes, driversRes] = await Promise.all([
-        axios.get(`${API_BASE}/trips`),
-        axios.get(`${API_BASE}/vehicles/available`),
-        axios.get(`${API_BASE}/drivers/available`),
+        axiosInstance.get('/trips'),
+        axiosInstance.get('/vehicles/available'),
+        axiosInstance.get('/drivers/available'),
       ]);
 
       if (tripsRes.data.success) setTrips(tripsRes.data.data);
       if (vehiclesRes.data.success) setVehicles(vehiclesRes.data.data);
       if (driversRes.data.success) setDrivers(driversRes.data.data);
     } catch (err) {
-      console.error('Error fetching data:', err);
-      showNotification('danger', 'Failed to retrieve data from server. Make sure backend is running.');
+      showNotification('danger', 'Failed to retrieve data from server.');
     } finally {
       setLoading(false);
     }
@@ -59,388 +55,273 @@ export default function Trips() {
     fetchData();
   }, []);
 
-  // Form submission: Create DRAFT trip
   const handleCreateTrip = async (e) => {
     e.preventDefault();
-
     if (!source || !destination || !vehicleId || !driverId || !cargoWeight || !plannedDistance) {
-      showNotification('danger', 'Please fill in all required fields.');
+      showNotification('warning', 'Please fill in all required fields.');
+      return;
+    }
+
+    if (cargoWeight <= 0 || plannedDistance <= 0) {
+      showNotification('warning', 'Cargo weight and planned distance must be greater than zero.');
+      return;
+    }
+    if (revenue && parseFloat(revenue) < 0) {
+      showNotification('warning', 'Revenue cannot be negative.');
       return;
     }
 
     try {
       const payload = {
-        source,
-        destination,
-        vehicleId: parseInt(vehicleId),
-        driverId: parseInt(driverId),
-        cargoWeight: parseFloat(cargoWeight),
-        plannedDistance: parseFloat(plannedDistance),
+        source, destination,
+        vehicleId: parseInt(vehicleId), driverId: parseInt(driverId),
+        cargoWeight: parseFloat(cargoWeight), plannedDistance: parseFloat(plannedDistance),
         revenue: revenue ? parseFloat(revenue) : null,
       };
-
-      const res = await axios.post(`${API_BASE}/trips`, payload);
-
+      const res = await axiosInstance.post('/trips', payload);
       if (res.data.success) {
         showNotification('success', 'Draft trip created successfully.');
-        // Reset form
-        setSource('');
-        setDestination('');
-        setVehicleId('');
-        setDriverId('');
-        setCargoWeight('');
-        setPlannedDistance('');
-        setRevenue('');
-        // Refresh
+        setSource(''); setDestination(''); setVehicleId(''); setDriverId('');
+        setCargoWeight(''); setPlannedDistance(''); setRevenue('');
         fetchData();
       } else {
         showNotification('danger', res.data.message);
       }
     } catch (err) {
-      const errMsg = err.response?.data?.message || 'Error occurred while creating the trip.';
-      showNotification('danger', errMsg);
+      showNotification('danger', err.response?.data?.message || 'Error creating trip.');
     }
   };
 
-  // Action: Dispatch Trip
   const handleDispatchTrip = async (id) => {
     try {
-      const res = await axios.post(`${API_BASE}/trips/${id}/dispatch`);
+      const res = await axiosInstance.post(`/trips/${id}/dispatch`);
       if (res.data.success) {
-        showNotification('success', 'Trip dispatched successfully! Vehicle and driver status updated to ON_TRIP.');
+        showNotification('success', 'Trip dispatched successfully!');
         fetchData();
       } else {
         showNotification('danger', res.data.message);
       }
     } catch (err) {
-      const errMsg = err.response?.data?.message || 'Error dispatching trip.';
-      showNotification('danger', errMsg);
+      showNotification('danger', err.response?.data?.message || 'Error dispatching trip.');
     }
   };
 
-  // Action: Cancel Trip
   const handleCancelTrip = async (id) => {
     try {
-      const res = await axios.post(`${API_BASE}/trips/${id}/cancel`);
+      const res = await axiosInstance.post(`/trips/${id}/cancel`);
       if (res.data.success) {
-        showNotification('success', 'Trip cancelled successfully. Vehicle and driver status restored to AVAILABLE.');
+        showNotification('info', 'Trip cancelled.');
         fetchData();
       } else {
         showNotification('danger', res.data.message);
       }
     } catch (err) {
-      const errMsg = err.response?.data?.message || 'Error cancelling trip.';
-      showNotification('danger', errMsg);
+      showNotification('danger', err.response?.data?.message || 'Error cancelling trip.');
     }
   };
 
-  // Action: Complete Trip Submission
   const handleCompleteSubmit = async (e) => {
     e.preventDefault();
-
     if (!actualDistance || !fuelConsumed) {
-      showNotification('danger', 'Please enter actual odometer and fuel consumed values.');
+      showNotification('warning', 'Please enter actual odometer and fuel consumed values.');
+      return;
+    }
+
+    if (actualDistance <= 0 || fuelConsumed <= 0) {
+      showNotification('warning', 'Distance and fuel consumed must be greater than zero.');
       return;
     }
 
     try {
-      const payload = {
-        actualDistance: parseFloat(actualDistance),
-        fuelConsumed: parseFloat(fuelConsumed),
-      };
-
-      const id = activeTripForCompletion.id;
-      const res = await axios.post(`${API_BASE}/trips/${id}/complete`, payload);
-
+      const payload = { actualDistance: parseFloat(actualDistance), fuelConsumed: parseFloat(fuelConsumed) };
+      const res = await axiosInstance.post(`/trips/${activeTripForCompletion.id}/complete`, payload);
       if (res.data.success) {
-        showNotification('success', 'Trip completed successfully! Vehicle and driver status set back to AVAILABLE.');
-        // Close modal & reset fields
+        showNotification('success', 'Trip completed successfully!');
         setActiveTripForCompletion(null);
-        setActualDistance('');
-        setFuelConsumed('');
-        // Refresh
+        setActualDistance(''); setFuelConsumed('');
         fetchData();
       } else {
         showNotification('danger', res.data.message);
       }
     } catch (err) {
-      const errMsg = err.response?.data?.message || 'Error completing trip.';
-      showNotification('danger', errMsg);
+      showNotification('danger', err.response?.data?.message || 'Error completing trip.');
     }
   };
 
-  return (
-    <div className="trips-page">
-      <header className="page-header" style={{ marginBottom: '32px' }}>
-        <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '28px', fontWeight: 700 }}>Trip Operations Management</h2>
-        <p style={{ color: 'var(--text-secondary)' }}>Plan, dispatch, and complete vehicle delivery lifecycles.</p>
-      </header>
+  const renderBadge = (status) => {
+    const colors = {
+      DRAFT: { bg: 'rgba(100, 116, 139, 0.2)', color: '#94a3b8', border: 'rgba(100,116,139,0.3)' },
+      DISPATCHED: { bg: 'rgba(99, 102, 241, 0.2)', color: '#818cf8', border: 'rgba(99,102,241,0.3)' },
+      COMPLETED: { bg: 'rgba(16, 185, 129, 0.2)', color: '#34d399', border: 'rgba(16,185,129,0.3)' },
+      CANCELLED: { bg: 'rgba(239, 68, 68, 0.2)', color: '#f87171', border: 'rgba(239,68,68,0.3)' },
+    };
+    const style = colors[status] || colors.DRAFT;
+    return (
+      <span style={{
+        background: style.bg, color: style.color, border: `1px solid ${style.border}`,
+        padding: '0.25rem 0.75rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.05em'
+      }}>
+        {status}
+      </span>
+    );
+  };
 
-      {/* Alerts banner */}
+  const tableHeaders = ['ID', 'Route', 'Vehicle', 'Driver', 'Cargo', 'Dist.', 'Status', 'Actions'];
+  const renderRow = (t) => (
+    <>
+      <td style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-muted)' }}>#{t.id}</td>
+      <td style={{ padding: '1rem' }}>
+        <div style={{ fontWeight: 500 }}>{t.source}</div>
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>to {t.destination}</div>
+      </td>
+      <td style={{ padding: '1rem', color: 'var(--color-info)' }}>ID: {t.vehicleId}</td>
+      <td style={{ padding: '1rem', color: 'var(--color-secondary)' }}>ID: {t.driverId}</td>
+      <td style={{ padding: '1rem' }}>{t.cargoWeight} kg</td>
+      <td style={{ padding: '1rem' }}>{t.plannedDistance} km</td>
+      <td style={{ padding: '1rem' }}>{renderBadge(t.status)}</td>
+      <td style={{ padding: '1rem' }}>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          {t.status === 'DRAFT' && (
+            <button
+              onClick={() => handleDispatchTrip(t.id)}
+              style={{
+                background: 'rgba(99, 102, 241, 0.1)', color: 'var(--color-primary)',
+                border: '1px solid rgba(99,102,241,0.2)', padding: '0.3rem 0.6rem',
+                borderRadius: '6px', fontSize: '0.8rem'
+              }}
+            >
+              Dispatch
+            </button>
+          )}
+          {t.status === 'DISPATCHED' && (
+            <>
+              <button
+                onClick={() => setActiveTripForCompletion(t)}
+                style={{
+                  background: 'rgba(16, 185, 129, 0.1)', color: 'var(--color-success)',
+                  border: '1px solid rgba(16,185,129,0.2)', padding: '0.3rem 0.6rem',
+                  borderRadius: '6px', fontSize: '0.8rem'
+                }}
+              >
+                Complete
+              </button>
+              <button
+                onClick={() => handleCancelTrip(t.id)}
+                style={{
+                  background: 'rgba(239, 68, 68, 0.1)', color: 'var(--color-danger)',
+                  border: '1px solid rgba(239,68,68,0.2)', padding: '0.3rem 0.6rem',
+                  borderRadius: '6px', fontSize: '0.8rem'
+                }}
+              >
+                Cancel
+              </button>
+            </>
+          )}
+        </div>
+      </td>
+    </>
+  );
+
+  return (
+    <div className="page-container animate-fade-in">
+      <div style={{ marginBottom: '2rem' }}>
+        <h1 className="page-title">Trip Operations</h1>
+        <p className="page-subtitle">Plan, dispatch, and complete vehicle delivery lifecycles.</p>
+      </div>
+
       {notification && (
-        <div className={`alert-banner alert-${notification.type}`} id="notification-banner">
-          <span>{notification.message}</span>
+        <div style={{
+          background: notification.type === 'success' ? 'rgba(16, 185, 129, 0.1)' : notification.type === 'warning' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+          color: notification.type === 'success' ? '#34d399' : notification.type === 'warning' ? '#fbbf24' : '#fca5a5',
+          padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem',
+          border: `1px solid ${notification.type === 'success' ? 'rgba(16,185,129,0.2)' : notification.type === 'warning' ? 'rgba(245,158,11,0.2)' : 'rgba(239,68,68,0.2)'}`
+        }}>
+          {notification.message}
         </div>
       )}
 
-      <div className="dashboard-grid">
-        {/* Create Trip Form Section */}
-        <section className="card" aria-label="Create Trip Form">
-          <h3 className="card-title">Create Delivery Trip</h3>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem', marginBottom: '2rem' }}>
+        <GlassCard title="Create Delivery Trip">
           <form onSubmit={handleCreateTrip}>
-            <div className="form-group">
-              <label htmlFor="source-input">Source Location *</label>
-              <input
-                id="source-input"
-                type="text"
-                className="form-control"
-                placeholder="e.g. Warehouse A"
-                value={source}
-                onChange={(e) => setSource(e.target.value)}
-                required
-              />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+              <div>
+                <label>Source Location *</label>
+                <input value={source} onChange={e => setSource(e.target.value)} placeholder="e.g. Warehouse A" required />
+              </div>
+              <div>
+                <label>Destination Location *</label>
+                <input value={destination} onChange={e => setDestination(e.target.value)} placeholder="e.g. Dist. Center B" required />
+              </div>
+              <div>
+                <label>Available Vehicle *</label>
+                <select value={vehicleId} onChange={e => setVehicleId(e.target.value)} required>
+                  <option value="" style={{ background: 'var(--bg-main)' }}>Select a vehicle...</option>
+                  {vehicles.map(v => <option key={v.id} value={v.id} style={{ background: 'var(--bg-main)' }}>{v.registrationNumber} (Max: {v.maxLoadCapacity}kg)</option>)}
+                </select>
+              </div>
+              <div>
+                <label>Available Driver *</label>
+                <select value={driverId} onChange={e => setDriverId(e.target.value)} required>
+                  <option value="" style={{ background: 'var(--bg-main)' }}>Select a driver...</option>
+                  {drivers.map(d => <option key={d.id} value={d.id} style={{ background: 'var(--bg-main)' }}>{d.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label>Cargo Weight (kg) *</label>
+                <input type="number" step="any" value={cargoWeight} onChange={e => setCargoWeight(e.target.value)} required />
+              </div>
+              <div>
+                <label>Planned Distance (km) *</label>
+                <input type="number" step="any" value={plannedDistance} onChange={e => setPlannedDistance(e.target.value)} required />
+              </div>
+              <div>
+                <label>Planned Revenue (₹) (Optional)</label>
+                <input type="number" step="any" value={revenue} onChange={e => setRevenue(e.target.value)} />
+              </div>
             </div>
-
-            <div className="form-group">
-              <label htmlFor="destination-input">Destination Location *</label>
-              <input
-                id="destination-input"
-                type="text"
-                className="form-control"
-                placeholder="e.g. Distribution Center B"
-                value={destination}
-                onChange={(e) => setDestination(e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="vehicle-select">Available Vehicle *</label>
-              <select
-                id="vehicle-select"
-                className="form-control"
-                value={vehicleId}
-                onChange={(e) => setVehicleId(e.target.value)}
-                required
-              >
-                <option value="">Select an available vehicle...</option>
-                {vehicles.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.registrationNumber} (Max: {v.maxLoadCapacity}kg)
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="driver-select">Available Driver *</label>
-              <select
-                id="driver-select"
-                className="form-control"
-                value={driverId}
-                onChange={(e) => setDriverId(e.target.value)}
-                required
-              >
-                <option value="">Select an available driver...</option>
-                {drivers.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name} ({d.licenseNumber})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="cargo-input">Cargo Weight (kg) *</label>
-              <input
-                id="cargo-input"
-                type="number"
-                step="any"
-                className="form-control"
-                placeholder="e.g. 450"
-                value={cargoWeight}
-                onChange={(e) => setCargoWeight(e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="distance-input">Planned Distance (km) *</label>
-              <input
-                id="distance-input"
-                type="number"
-                step="any"
-                className="form-control"
-                placeholder="e.g. 120"
-                value={plannedDistance}
-                onChange={(e) => setPlannedDistance(e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="revenue-input">Planned Revenue ($) (Optional)</label>
-              <input
-                id="revenue-input"
-                type="number"
-                step="any"
-                className="form-control"
-                placeholder="e.g. 1200"
-                value={revenue}
-                onChange={(e) => setRevenue(e.target.value)}
-              />
-            </div>
-
-            <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '10px' }} id="btn-submit-trip">
+            <button
+              type="submit"
+              style={{
+                width: '100%', background: 'var(--bg-gradient-primary)', border: 'none', color: '#fff',
+                padding: '0.75rem', borderRadius: '8px', fontWeight: 600, boxShadow: 'var(--shadow-glow-primary)'
+              }}
+            >
               Create Trip
             </button>
           </form>
-        </section>
+        </GlassCard>
 
-        {/* Trip List Table Section */}
-        <section className="card" style={{ overflow: 'hidden' }} aria-label="Trip List">
-          <h3 className="card-title">Active Operational Trips</h3>
+        <GlassCard title="Active Operational Trips">
           {loading ? (
-            <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
-              Loading operational logs...
-            </div>
-          ) : trips.length === 0 ? (
-            <div className="empty-state">
-              <div className="empty-state-icon">🚚</div>
-              <p>No trips registered in database.</p>
-            </div>
+            <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>Loading operational logs...</div>
           ) : (
-            <div className="table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Route</th>
-                    <th>Vehicle ID</th>
-                    <th>Driver ID</th>
-                    <th>Cargo Weight</th>
-                    <th>Planned Dist.</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {trips.map((t) => (
-                    <tr key={t.id}>
-                      <td style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>#{t.id}</td>
-                      <td>
-                        <div style={{ fontWeight: 500 }}>{t.source}</div>
-                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                          to {t.destination}
-                        </div>
-                      </td>
-                      <td>{t.vehicleId}</td>
-                      <td>{t.driverId}</td>
-                      <td>{t.cargoWeight} kg</td>
-                      <td>{t.plannedDistance} km</td>
-                      <td>
-                        <span className={`badge badge-${t.status.toLowerCase()}`}>
-                          {t.status}
-                        </span>
-                      </td>
-                      <td>
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                          {t.status === 'DRAFT' && (
-                            <button
-                              id={`btn-dispatch-${t.id}`}
-                              className="btn btn-primary btn-xs"
-                              onClick={() => handleDispatchTrip(t.id)}
-                            >
-                              Dispatch
-                            </button>
-                          )}
-                          {t.status === 'DISPATCHED' && (
-                            <>
-                              <button
-                                id={`btn-complete-${t.id}`}
-                                className="btn btn-success btn-xs"
-                                onClick={() => setActiveTripForCompletion(t)}
-                              >
-                                Complete
-                              </button>
-                              <button
-                                id={`btn-cancel-${t.id}`}
-                                className="btn btn-danger btn-xs"
-                                onClick={() => handleCancelTrip(t.id)}
-                              >
-                                Cancel
-                              </button>
-                            </>
-                          )}
-                          {(t.status === 'COMPLETED' || t.status === 'CANCELLED') && (
-                            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>None</span>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <ModernTable headers={tableHeaders} data={trips} renderRow={renderRow} emptyMessage="No trips registered in database." />
           )}
-        </section>
+        </GlassCard>
       </div>
 
-      {/* Completion Details Modal */}
-      {activeTripForCompletion && (
-        <div className="modal-overlay" id="completion-modal">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3>Complete Trip #{activeTripForCompletion.id}</h3>
-              <button className="modal-close" onClick={() => setActiveTripForCompletion(null)}>
-                &times;
-              </button>
+      <Modal isOpen={!!activeTripForCompletion} onClose={() => setActiveTripForCompletion(null)} title={`Complete Trip #${activeTripForCompletion?.id}`}>
+        <form onSubmit={handleCompleteSubmit}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
+            <div>
+              <label>Actual Distance (km) *</label>
+              <input type="number" step="any" value={actualDistance} onChange={e => setActualDistance(e.target.value)} required />
             </div>
-            <form onSubmit={handleCompleteSubmit}>
-              <div className="form-group">
-                <label htmlFor="actual-distance-input">Actual Distance (km) *</label>
-                <input
-                  id="actual-distance-input"
-                  type="number"
-                  step="any"
-                  className="form-control"
-                  placeholder="e.g. 122.5"
-                  value={actualDistance}
-                  onChange={(e) => setActualDistance(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="fuel-consumed-input">Fuel Consumed (liters) *</label>
-                <input
-                  id="fuel-consumed-input"
-                  type="number"
-                  step="any"
-                  className="form-control"
-                  placeholder="e.g. 15.2"
-                  value={fuelConsumed}
-                  onChange={(e) => setFuelConsumed(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="modal-footer">
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => setActiveTripForCompletion(null)}
-                >
-                  Close
-                </button>
-                <button type="submit" className="btn btn-success" id="btn-submit-completion">
-                  Submit Completion
-                </button>
-              </div>
-            </form>
+            <div>
+              <label>Fuel Consumed (liters) *</label>
+              <input type="number" step="any" value={fuelConsumed} onChange={e => setFuelConsumed(e.target.value)} required />
+            </div>
           </div>
-        </div>
-      )}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+            <button type="button" onClick={() => setActiveTripForCompletion(null)} style={{ background: 'transparent', border: '1px solid var(--border-input)', color: 'var(--text-main)', padding: '0.75rem 1.5rem', borderRadius: '8px' }}>
+              Close
+            </button>
+            <button type="submit" style={{ background: 'rgba(16, 185, 129, 0.2)', border: '1px solid rgba(16,185,129,0.3)', color: '#34d399', padding: '0.75rem 1.5rem', borderRadius: '8px', fontWeight: 600 }}>
+              Submit Completion
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

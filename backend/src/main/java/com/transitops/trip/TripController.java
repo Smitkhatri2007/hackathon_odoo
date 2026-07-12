@@ -126,20 +126,5 @@ public class TripController {
         }
     }
 
-    // Stub routes for Frontend dropdowns
-    // GET /api/vehicles/available
-    @GetMapping("/vehicles/available")
-    public ResponseEntity<ApiResponse<List<Vehicle>>> getAvailableVehicles() {
-        List<Vehicle> list = vehicleService.getAvailableVehicles();
-        ApiResponse<List<Vehicle>> response = new ApiResponse<>(true, "Available vehicles retrieved successfully.", list);
-        return ResponseEntity.ok(response);
-    }
 
-    // GET /api/drivers/available
-    @GetMapping("/drivers/available")
-    public ResponseEntity<ApiResponse<List<Driver>>> getAvailableDrivers() {
-        List<Driver> list = driverService.getAvailableDrivers();
-        ApiResponse<List<Driver>> response = new ApiResponse<>(true, "Available drivers retrieved successfully.", list);
-        return ResponseEntity.ok(response);
-    }
 }

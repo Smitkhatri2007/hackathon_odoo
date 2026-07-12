@@ -1,11 +1,18 @@
 import { useState, useEffect } from 'react';
 import axiosInstance from '../api/axiosInstance';
+import GlassCard from '../components/GlassCard';
+import ModernTable from '../components/ModernTable';
 
 export default function Maintenance() {
     const [records, setRecords] = useState([]);
     const [form, setForm] = useState({ vehicleId: '', type: '', description: '', cost: '' });
     const [loading, setLoading] = useState(false);
-    const [message, setMessage] = useState('');
+    const [notification, setNotification] = useState(null);
+
+    const showNotification = (type, message) => {
+        setNotification({ type, message });
+        setTimeout(() => setNotification(null), 5000);
+    };
 
     const fetchRecords = async () => {
         try {
@@ -25,7 +32,13 @@ export default function Maintenance() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
-        setMessage('');
+
+        if (form.cost && Number(form.cost) < 0) {
+            showNotification('warning', 'Cost cannot be negative.');
+            setLoading(false);
+            return;
+        }
+
         try {
             const payload = {
                 vehicleId: Number(form.vehicleId),
@@ -34,11 +47,11 @@ export default function Maintenance() {
                 cost: form.cost ? Number(form.cost) : null,
             };
             await axiosInstance.post('/maintenance', payload);
-            setMessage('Maintenance record created — vehicle set to IN_SHOP');
+            showNotification('success', 'Maintenance record created — vehicle set to IN_SHOP');
             setForm({ vehicleId: '', type: '', description: '', cost: '' });
             fetchRecords();
         } catch (err) {
-            setMessage(err.response?.data?.message || 'Error creating record');
+            showNotification('danger', err.response?.data?.message || 'Error creating record');
         } finally {
             setLoading(false);
         }
@@ -47,126 +60,111 @@ export default function Maintenance() {
     const handleClose = async (id) => {
         try {
             await axiosInstance.put(`/maintenance/${id}/close`);
-            setMessage('Maintenance record closed');
+            showNotification('success', 'Maintenance record closed');
             fetchRecords();
         } catch (err) {
-            setMessage(err.response?.data?.message || 'Error closing record');
+            showNotification('danger', err.response?.data?.message || 'Error closing record');
         }
     };
 
-    return (
-        <div className="page-container">
-            <div className="page-header">
-                <h1>🔧 Maintenance Management</h1>
-                <p className="subtitle">Track vehicle maintenance and repair logs</p>
-            </div>
+    const renderBadge = (status) => {
+        const isClosed = status === 'CLOSED';
+        return (
+            <span style={{
+                background: isClosed ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)',
+                color: isClosed ? '#34d399' : '#fbbf24',
+                border: `1px solid ${isClosed ? 'rgba(16,185,129,0.3)' : 'rgba(245,158,11,0.3)'}`,
+                padding: '0.25rem 0.75rem',
+                borderRadius: '9999px',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                letterSpacing: '0.05em'
+            }}>
+                {status}
+            </span>
+        );
+    };
 
-            {message && <div className="alert">{message}</div>}
-
-            <div className="card">
-                <h2>New Maintenance Record</h2>
-                <form onSubmit={handleSubmit} className="form-grid">
-                    <div className="form-group">
-                        <label htmlFor="vehicleId">Vehicle ID</label>
-                        <input
-                            id="vehicleId"
-                            name="vehicleId"
-                            type="number"
-                            placeholder="e.g. 1"
-                            value={form.vehicleId}
-                            onChange={handleChange}
-                            required
-                        />
-                    </div>
-                    <div className="form-group">
-                        <label htmlFor="type">Type</label>
-                        <input
-                            id="type"
-                            name="type"
-                            type="text"
-                            placeholder="e.g. Oil Change, Brake Repair"
-                            value={form.type}
-                            onChange={handleChange}
-                            required
-                        />
-                    </div>
-                    <div className="form-group">
-                        <label htmlFor="description">Description</label>
-                        <input
-                            id="description"
-                            name="description"
-                            type="text"
-                            placeholder="Details about the maintenance"
-                            value={form.description}
-                            onChange={handleChange}
-                        />
-                    </div>
-                    <div className="form-group">
-                        <label htmlFor="cost">Cost (₹)</label>
-                        <input
-                            id="cost"
-                            name="cost"
-                            type="number"
-                            step="0.01"
-                            placeholder="0.00"
-                            value={form.cost}
-                            onChange={handleChange}
-                        />
-                    </div>
-                    <button type="submit" className="btn btn-primary" disabled={loading}>
-                        {loading ? 'Creating...' : '+ Create Record'}
+    const tableHeaders = ['ID', 'Vehicle ID', 'Type', 'Description', 'Cost', 'Status', 'Created', 'Closed', 'Action'];
+    const renderRow = (r) => (
+        <>
+            <td style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-muted)' }}>#{r.id}</td>
+            <td style={{ padding: '1rem', color: 'var(--color-info)' }}>{r.vehicleId}</td>
+            <td style={{ padding: '1rem', fontWeight: 500 }}>{r.type}</td>
+            <td style={{ padding: '1rem', color: 'var(--text-muted)' }}>{r.description || '—'}</td>
+            <td style={{ padding: '1rem', color: 'var(--color-success)' }}>{r.cost != null ? `₹${r.cost.toLocaleString('en-IN')}` : '—'}</td>
+            <td style={{ padding: '1rem' }}>{renderBadge(r.status)}</td>
+            <td style={{ padding: '1rem' }}>{new Date(r.createdAt).toLocaleDateString()}</td>
+            <td style={{ padding: '1rem' }}>{r.closedAt ? new Date(r.closedAt).toLocaleDateString() : '—'}</td>
+            <td style={{ padding: '1rem' }}>
+                {r.status === 'OPEN' && (
+                    <button
+                        onClick={() => handleClose(r.id)}
+                        style={{
+                            background: 'rgba(16, 185, 129, 0.1)', color: 'var(--color-success)',
+                            border: '1px solid rgba(16,185,129,0.2)', padding: '0.3rem 0.6rem',
+                            borderRadius: '6px', fontSize: '0.8rem'
+                        }}
+                    >
+                        Close
                     </button>
-                </form>
+                )}
+            </td>
+        </>
+    );
+
+    return (
+        <div className="page-container animate-fade-in">
+            <div style={{ marginBottom: '2rem' }}>
+                <h1 className="page-title">Maintenance</h1>
+                <p className="page-subtitle">Track vehicle maintenance and repair logs</p>
             </div>
 
-            <div className="card">
-                <h2>Maintenance Records</h2>
-                {records.length === 0 ? (
-                    <p className="empty-state">No maintenance records found.</p>
-                ) : (
-                    <div className="table-wrapper">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Vehicle ID</th>
-                                    <th>Type</th>
-                                    <th>Description</th>
-                                    <th>Cost</th>
-                                    <th>Status</th>
-                                    <th>Created</th>
-                                    <th>Closed</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {records.map((r) => (
-                                    <tr key={r.id}>
-                                        <td>{r.id}</td>
-                                        <td>{r.vehicleId}</td>
-                                        <td>{r.type}</td>
-                                        <td>{r.description || '—'}</td>
-                                        <td>{r.cost != null ? `₹${r.cost.toFixed(2)}` : '—'}</td>
-                                        <td>
-                                            <span className={`badge ${r.status === 'OPEN' ? 'badge-warning' : 'badge-success'}`}>
-                                                {r.status}
-                                            </span>
-                                        </td>
-                                        <td>{new Date(r.createdAt).toLocaleDateString()}</td>
-                                        <td>{r.closedAt ? new Date(r.closedAt).toLocaleDateString() : '—'}</td>
-                                        <td>
-                                            {r.status === 'OPEN' && (
-                                                <button className="btn btn-sm btn-success" onClick={() => handleClose(r.id)}>
-                                                    Close
-                                                </button>
-                                            )}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
+            {notification && (
+                <div style={{
+                    background: notification.type === 'success' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                    color: notification.type === 'success' ? '#34d399' : '#fca5a5',
+                    padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem',
+                    border: `1px solid ${notification.type === 'success' ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}`
+                }}>
+                    {notification.message}
+                </div>
+            )}
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem', marginBottom: '2rem' }}>
+                <GlassCard title="New Maintenance Record">
+                    <form onSubmit={handleSubmit}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+                            <div>
+                                <label>Vehicle ID</label>
+                                <input name="vehicleId" type="number" placeholder="e.g. 1" value={form.vehicleId} onChange={handleChange} required />
+                            </div>
+                            <div>
+                                <label>Type</label>
+                                <input name="type" type="text" placeholder="e.g. Oil Change" value={form.type} onChange={handleChange} required />
+                            </div>
+                            <div>
+                                <label>Description</label>
+                                <input name="description" type="text" placeholder="Details about the maintenance" value={form.description} onChange={handleChange} />
+                            </div>
+                            <div>
+                                <label>Cost (₹)</label>
+                                <input name="cost" type="number" step="0.01" placeholder="0.00" value={form.cost} onChange={handleChange} />
+                            </div>
+                        </div>
+                        <button type="submit" disabled={loading} style={{
+                            width: '100%', background: 'var(--bg-gradient-primary)', border: 'none', color: '#fff',
+                            padding: '0.75rem', borderRadius: '8px', fontWeight: 600, boxShadow: 'var(--shadow-glow-primary)',
+                            opacity: loading ? 0.7 : 1
+                        }}>
+                            {loading ? 'Creating...' : '+ Create Record'}
+                        </button>
+                    </form>
+                </GlassCard>
+
+                <GlassCard title="Maintenance Records">
+                    <ModernTable headers={tableHeaders} data={records} renderRow={renderRow} emptyMessage="No maintenance records found." />
+                </GlassCard>
             </div>
         </div>
     );

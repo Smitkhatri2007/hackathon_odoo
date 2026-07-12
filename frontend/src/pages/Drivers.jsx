@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import axiosInstance from '../api/axiosInstance';
 import Modal from '../components/Modal';
-import Navbar from '../components/Navbar';
+import GlassCard from '../components/GlassCard';
+import ModernTable from '../components/ModernTable';
 
 const LICENSE_CATEGORIES = ['A', 'B', 'C', 'D', 'E', 'CE', 'DE'];
 const DRIVER_STATUSES = ['AVAILABLE', 'ON_TRIP', 'OFF_DUTY', 'SUSPENDED'];
@@ -99,136 +100,185 @@ const Drivers = () => {
     }
   };
 
-  const getStatusClass = (status) => {
-    const map = { AVAILABLE: 'badge-success', ON_TRIP: 'badge-info', OFF_DUTY: 'badge-warning', SUSPENDED: 'badge-danger' };
-    return `badge ${map[status] || ''}`;
-  };
-
   const isLicenseExpired = (date) => new Date(date) < new Date();
 
   const getSafetyColor = (score) => {
-    if (score >= 80) return 'var(--color-success)';
-    if (score >= 60) return 'var(--color-warning)';
-    return 'var(--color-danger)';
+    if (score >= 80) return '#34d399';
+    if (score >= 60) return '#fbbf24';
+    return '#f87171';
+  };
+
+  const renderBadge = (status) => {
+    const colors = {
+      AVAILABLE: { bg: 'rgba(16, 185, 129, 0.2)', color: '#34d399', border: 'rgba(16,185,129,0.3)' },
+      ON_TRIP: { bg: 'rgba(99, 102, 241, 0.2)', color: '#818cf8', border: 'rgba(99,102,241,0.3)' },
+      OFF_DUTY: { bg: 'rgba(245, 158, 11, 0.2)', color: '#fbbf24', border: 'rgba(245,158,11,0.3)' },
+      SUSPENDED: { bg: 'rgba(239, 68, 68, 0.2)', color: '#fca5a5', border: 'rgba(239,68,68,0.3)' },
+    };
+    const style = colors[status] || colors.AVAILABLE;
+    return (
+      <span style={{
+        background: style.bg,
+        color: style.color,
+        border: `1px solid ${style.border}`,
+        padding: '0.25rem 0.75rem',
+        borderRadius: '9999px',
+        fontSize: '0.75rem',
+        fontWeight: 600,
+        letterSpacing: '0.05em'
+      }}>
+        {status.replace('_', ' ')}
+      </span>
+    );
+  };
+
+  const tableHeaders = ['Name', 'License No.', 'Category', 'Expiry', 'Contact', 'Safety', 'Status', 'Actions'];
+  const renderRow = (d) => {
+    const safetyColor = getSafetyColor(d.safetyScore);
+    const expired = isLicenseExpired(d.licenseExpiryDate);
+    
+    return (
+      <>
+        <td style={{ padding: '1rem', fontWeight: 600 }}>{d.name}</td>
+        <td style={{ padding: '1rem', fontFamily: 'monospace', color: 'var(--color-info)' }}>{d.licenseNumber}</td>
+        <td style={{ padding: '1rem', color: 'var(--text-muted)' }}>{d.licenseCategory}</td>
+        <td style={{ padding: '1rem', color: expired ? '#fca5a5' : 'inherit' }}>
+          {d.licenseExpiryDate} {expired && '⚠️'}
+        </td>
+        <td style={{ padding: '1rem' }}>{d.contactNumber}</td>
+        <td style={{ padding: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div style={{ width: '60px', height: '6px', background: 'rgba(148,163,184,0.2)', borderRadius: '3px', overflow: 'hidden' }}>
+              <div style={{ width: `${d.safetyScore}%`, height: '100%', background: safetyColor }} />
+            </div>
+            <span style={{ fontSize: '0.85rem', color: safetyColor, fontWeight: 600 }}>{d.safetyScore}</span>
+          </div>
+        </td>
+        <td style={{ padding: '1rem' }}>{renderBadge(d.status)}</td>
+        <td style={{ padding: '1rem' }}>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button
+              onClick={(e) => { e.stopPropagation(); openEdit(d); }}
+              style={{
+                background: 'rgba(99, 102, 241, 0.1)', color: 'var(--color-primary)',
+                border: '1px solid rgba(99,102,241,0.2)', padding: '0.4rem 0.8rem',
+                borderRadius: '6px', fontSize: '0.85rem'
+              }}
+            >
+              Edit
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); handleDelete(d.id); }}
+              style={{
+                background: 'rgba(239, 68, 68, 0.1)', color: 'var(--color-danger)',
+                border: '1px solid rgba(239,68,68,0.2)', padding: '0.4rem 0.8rem',
+                borderRadius: '6px', fontSize: '0.85rem'
+              }}
+            >
+              Delete
+            </button>
+          </div>
+        </td>
+      </>
+    );
   };
 
   return (
-    <div className="page-wrapper">
-      <Navbar />
-      <main className="main-content">
-        <div className="page-header">
-          <div>
-            <h1>Drivers</h1>
-            <p className="page-subtitle">Manage your fleet drivers</p>
-          </div>
-          <button className="btn btn-primary" onClick={openCreate}>+ Add Driver</button>
+    <div className="page-container animate-fade-in">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
+        <div>
+          <h1 className="page-title">Drivers</h1>
+          <p className="page-subtitle">Manage your fleet drivers</p>
         </div>
+        <button
+          onClick={openCreate}
+          style={{
+            background: 'var(--bg-gradient-primary)',
+            color: '#fff',
+            border: 'none',
+            padding: '0.75rem 1.5rem',
+            borderRadius: '8px',
+            fontWeight: 600,
+            boxShadow: 'var(--shadow-glow-primary)',
+            transition: 'transform 0.2s',
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+          onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+        >
+          + Add Driver
+        </button>
+      </div>
 
-        {successMsg && <div className="alert alert-success">{successMsg}</div>}
-        {error && !modalOpen && <div className="alert alert-error">{error}</div>}
+      {successMsg && (
+        <div style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#34d399', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem', border: '1px solid rgba(16,185,129,0.2)' }}>
+          {successMsg}
+        </div>
+      )}
+      {error && !modalOpen && (
+        <div style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#fca5a5', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem', border: '1px solid rgba(239,68,68,0.2)' }}>
+          {error}
+        </div>
+      )}
 
+      <GlassCard>
         {loading ? (
-          <div className="loading-container"><div className="spinner"></div></div>
-        ) : drivers.length === 0 ? (
-          <div className="empty-state">
-            <span className="empty-icon">👤</span>
-            <h3>No drivers yet</h3>
-            <p>Add your first driver to get started</p>
-          </div>
+          <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>Loading drivers...</div>
         ) : (
-          <div className="table-container">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>License No.</th>
-                  <th>Category</th>
-                  <th>License Expiry</th>
-                  <th>Contact</th>
-                  <th>Safety Score</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {drivers.map((d) => (
-                  <tr key={d.id}>
-                    <td className="font-semibold">{d.name}</td>
-                    <td className="font-mono">{d.licenseNumber}</td>
-                    <td>{d.licenseCategory}</td>
-                    <td>
-                      <span className={isLicenseExpired(d.licenseExpiryDate) ? 'text-danger' : ''}>
-                        {d.licenseExpiryDate}
-                        {isLicenseExpired(d.licenseExpiryDate) && ' ⚠️'}
-                      </span>
-                    </td>
-                    <td>{d.contactNumber}</td>
-                    <td>
-                      <div className="safety-score">
-                        <div className="score-bar">
-                          <div className="score-fill" style={{ width: `${d.safetyScore}%`, backgroundColor: getSafetyColor(d.safetyScore) }}></div>
-                        </div>
-                        <span className="score-value">{d.safetyScore}</span>
-                      </div>
-                    </td>
-                    <td><span className={getStatusClass(d.status)}>{d.status.replace('_', ' ')}</span></td>
-                    <td>
-                      <div className="action-buttons">
-                        <button className="btn btn-sm btn-ghost" onClick={() => openEdit(d)}>Edit</button>
-                        <button className="btn btn-sm btn-danger" onClick={() => handleDelete(d.id)}>Delete</button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <ModernTable headers={tableHeaders} data={drivers} renderRow={renderRow} emptyMessage="No drivers found. Add your first driver to get started." />
+        )}
+      </GlassCard>
+
+      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Edit Driver' : 'Add Driver'}>
+        {error && modalOpen && (
+          <div style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#fca5a5', padding: '1rem', borderRadius: '8px', marginBottom: '1rem', border: '1px solid rgba(239,68,68,0.2)' }}>
+            {error}
           </div>
         )}
-
-        <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Edit Driver' : 'Add Driver'}>
-          {error && modalOpen && <div className="alert alert-error">{error}</div>}
-          <form onSubmit={handleSubmit}>
-            <div className="form-grid">
-              <div className="form-group">
-                <label>Name</label>
-                <input value={form.name} onChange={(e) => setForm({...form, name: e.target.value})} required />
-              </div>
-              <div className="form-group">
-                <label>License Number</label>
-                <input value={form.licenseNumber} onChange={(e) => setForm({...form, licenseNumber: e.target.value})} required />
-              </div>
-              <div className="form-group">
-                <label>License Category</label>
-                <select value={form.licenseCategory} onChange={(e) => setForm({...form, licenseCategory: e.target.value})}>
-                  {LICENSE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-              <div className="form-group">
-                <label>License Expiry Date</label>
-                <input type="date" value={form.licenseExpiryDate} onChange={(e) => setForm({...form, licenseExpiryDate: e.target.value})} required />
-              </div>
-              <div className="form-group">
-                <label>Contact Number</label>
-                <input value={form.contactNumber} onChange={(e) => setForm({...form, contactNumber: e.target.value})} required />
-              </div>
-              <div className="form-group">
-                <label>Safety Score (0-100)</label>
-                <input type="number" step="0.1" min="0" max="100" value={form.safetyScore} onChange={(e) => setForm({...form, safetyScore: parseFloat(e.target.value) || ''})} required />
-              </div>
-              <div className="form-group">
-                <label>Status</label>
-                <select value={form.status} onChange={(e) => setForm({...form, status: e.target.value})}>
-                  {DRIVER_STATUSES.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
-                </select>
-              </div>
+        <form onSubmit={handleSubmit}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+            <div>
+              <label>Name</label>
+              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
             </div>
-            <div className="form-actions">
-              <button type="button" className="btn btn-ghost" onClick={() => setModalOpen(false)}>Cancel</button>
-              <button type="submit" className="btn btn-primary">{editing ? 'Update' : 'Create'}</button>
+            <div>
+              <label>License Number</label>
+              <input value={form.licenseNumber} onChange={(e) => setForm({ ...form, licenseNumber: e.target.value })} required />
             </div>
-          </form>
-        </Modal>
-      </main>
+            <div>
+              <label>License Category</label>
+              <select value={form.licenseCategory} onChange={(e) => setForm({ ...form, licenseCategory: e.target.value })}>
+                {LICENSE_CATEGORIES.map(c => <option key={c} value={c} style={{ background: 'var(--bg-main)' }}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label>License Expiry Date</label>
+              <input type="date" value={form.licenseExpiryDate} onChange={(e) => setForm({ ...form, licenseExpiryDate: e.target.value })} required />
+            </div>
+            <div>
+              <label>Contact Number</label>
+              <input value={form.contactNumber} onChange={(e) => setForm({ ...form, contactNumber: e.target.value })} required />
+            </div>
+            <div>
+              <label>Safety Score (0-100)</label>
+              <input type="number" step="0.1" min="0" max="100" value={form.safetyScore} onChange={(e) => setForm({ ...form, safetyScore: parseFloat(e.target.value) || '' })} required />
+            </div>
+            <div style={{ gridColumn: 'span 2' }}>
+              <label>Status</label>
+              <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
+                {DRIVER_STATUSES.map(s => <option key={s} value={s} style={{ background: 'var(--bg-main)' }}>{s.replace('_', ' ')}</option>)}
+              </select>
+            </div>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+            <button type="button" onClick={() => setModalOpen(false)} style={{ background: 'transparent', border: '1px solid var(--border-input)', color: 'var(--text-main)', padding: '0.75rem 1.5rem', borderRadius: '8px' }}>
+              Cancel
+            </button>
+            <button type="submit" style={{ background: 'var(--bg-gradient-primary)', border: 'none', color: '#fff', padding: '0.75rem 1.5rem', borderRadius: '8px', fontWeight: 600, boxShadow: 'var(--shadow-glow-primary)' }}>
+              {editing ? 'Update' : 'Create'}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };

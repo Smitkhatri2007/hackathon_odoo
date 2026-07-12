@@ -6,6 +6,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation } f
 // Person 1: Vehicle Management
 import Vehicles from './pages/Vehicles';
 import Drivers from './pages/Drivers';
+import Users from './pages/Users';
 
 // Person 2: Driver & Trip Management
 import Trips from './pages/Trips';
@@ -75,6 +76,7 @@ function NavBar() {
       {/* Person 1 routes */}
       <Link to="/vehicles" style={linkStyle(location.pathname === '/vehicles')}>Vehicles</Link>
       <Link to="/drivers" style={linkStyle(location.pathname === '/drivers')}>Drivers</Link>
+      <Link to="/users" style={linkStyle(location.pathname === '/users')}>Users</Link>
 
       {/* Person 2 routes */}
       <Link to="/trips" style={linkStyle(location.pathname === '/trips')}>Trips</Link>
@@ -107,6 +109,7 @@ function App() {
         {/* Person 1: Vehicle Management */}
         <Route path="/vehicles" element={<ProtectedRoute><Vehicles /></ProtectedRoute>} />
         <Route path="/drivers" element={<ProtectedRoute><Drivers /></ProtectedRoute>} />
+        <Route path="/users" element={<ProtectedRoute><Users /></ProtectedRoute>} />
 
         {/* Person 2: Driver & Trip Management */}
         <Route path="/trips" element={<ProtectedRoute><Trips /></ProtectedRoute>} />

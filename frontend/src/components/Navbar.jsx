@@ -23,6 +23,9 @@ const Navbar = () => {
         <NavLink to="/drivers" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
           <span className="nav-icon">👤</span> Drivers
         </NavLink>
+        <NavLink to="/users" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+          <span className="nav-icon">👥</span> Users
+        </NavLink>
         {/* TEAMMATE: add your <NavLink> here for Trips */}
         <NavLink to="/maintenance" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
           <span className="nav-icon">🔧</span> Maintenance

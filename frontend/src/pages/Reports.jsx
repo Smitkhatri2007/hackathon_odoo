@@ -332,8 +332,8 @@ export default function Reports() {
                     </span>
                   </td>
                   <td style={styles.td}>{row.vehicleName}</td>
-                  <td style={styles.td}>{Number(row.totalDistance || 0).toLocaleString()}</td>
-                  <td style={styles.td}>{Number(row.totalFuel || 0).toLocaleString()}</td>
+                  <td style={styles.td}>{Number(row.totalDistance || 0).toLocaleString('en-IN')}</td>
+                  <td style={styles.td}>{Number(row.totalFuel || 0).toLocaleString('en-IN')}</td>
                   <td style={styles.td}>
                     <span style={styles.badge(
                       Number(row.kmPerLiter) >= 8 ? COLORS.success
@@ -452,8 +452,8 @@ export default function Reports() {
                     </span>
                   </td>
                   <td style={styles.td}>{row.vehicleName}</td>
-                  <td style={styles.td}>₹{Number(row.maintenanceCost || 0).toLocaleString()}</td>
-                  <td style={styles.td}>₹{Number(row.fuelCost || 0).toLocaleString()}</td>
+                  <td style={styles.td}>₹{Number(row.maintenanceCost || 0).toLocaleString('en-IN')}</td>
+                  <td style={styles.td}>₹{Number(row.fuelCost || 0).toLocaleString('en-IN')}</td>
                   <td style={styles.td}>
                     <span style={{
                       fontWeight: 700,
@@ -461,7 +461,7 @@ export default function Reports() {
                         : Number(row.totalCost) > 20000 ? COLORS.warning
                           : COLORS.success,
                     }}>
-                      ₹{Number(row.totalCost || 0).toLocaleString()}
+                      ₹{Number(row.totalCost || 0).toLocaleString('en-IN')}
                     </span>
                   </td>
                 </tr>

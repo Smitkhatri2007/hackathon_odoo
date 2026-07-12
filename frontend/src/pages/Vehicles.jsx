@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import axiosInstance from '../api/axiosInstance';
 import Modal from '../components/Modal';
-import Navbar from '../components/Navbar';
+import GlassCard from '../components/GlassCard';
+import ModernTable from '../components/ModernTable';
 
 const VEHICLE_TYPES = ['Truck', 'Van', 'Bus', 'Car', 'Trailer', 'Tanker'];
 const VEHICLE_STATUSES = ['AVAILABLE', 'ON_TRIP', 'IN_SHOP', 'RETIRED'];
@@ -73,6 +74,21 @@ const Vehicles = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    // Validation
+    if (!form.registrationNumber.trim()) {
+      setError('Registration number is required.');
+      return;
+    }
+    if (form.maxLoadCapacity <= 0) {
+      setError('Max Load Capacity must be greater than 0.');
+      return;
+    }
+    if (form.acquisitionCost <= 0) {
+      setError('Acquisition Cost must be greater than 0.');
+      return;
+    }
+
     try {
       if (editing) {
         await axiosInstance.put(`/vehicles/${editing}`, form);
@@ -99,116 +115,163 @@ const Vehicles = () => {
     }
   };
 
-  const getStatusClass = (status) => {
-    const map = { AVAILABLE: 'badge-success', ON_TRIP: 'badge-info', IN_SHOP: 'badge-warning', RETIRED: 'badge-danger' };
-    return `badge ${map[status] || ''}`;
+  const renderBadge = (status) => {
+    const colors = {
+      AVAILABLE: { bg: 'rgba(16, 185, 129, 0.2)', color: '#34d399', border: 'rgba(16,185,129,0.3)' },
+      ON_TRIP: { bg: 'rgba(99, 102, 241, 0.2)', color: '#818cf8', border: 'rgba(99,102,241,0.3)' },
+      IN_SHOP: { bg: 'rgba(245, 158, 11, 0.2)', color: '#fbbf24', border: 'rgba(245,158,11,0.3)' },
+      RETIRED: { bg: 'rgba(100, 116, 139, 0.2)', color: '#94a3b8', border: 'rgba(100,116,139,0.3)' },
+    };
+    const style = colors[status] || colors.AVAILABLE;
+    return (
+      <span style={{
+        background: style.bg,
+        color: style.color,
+        border: `1px solid ${style.border}`,
+        padding: '0.25rem 0.75rem',
+        borderRadius: '9999px',
+        fontSize: '0.75rem',
+        fontWeight: 600,
+        letterSpacing: '0.05em'
+      }}>
+        {status.replace('_', ' ')}
+      </span>
+    );
   };
 
-  return (
-    <div className="page-wrapper">
-      <Navbar />
-      <main className="main-content">
-        <div className="page-header">
-          <div>
-            <h1>Vehicles</h1>
-            <p className="page-subtitle">Manage your fleet vehicles</p>
-          </div>
-          <button className="btn btn-primary" onClick={openCreate}>+ Add Vehicle</button>
+  const tableHeaders = ['Reg. Number', 'Name', 'Type', 'Max Load', 'Odometer', 'Cost', 'Status', 'Actions'];
+  const renderRow = (v) => (
+    <>
+      <td style={{ padding: '1rem', fontFamily: 'monospace', color: 'var(--color-info)' }}>{v.registrationNumber}</td>
+      <td style={{ padding: '1rem', fontWeight: 500 }}>{v.name}</td>
+      <td style={{ padding: '1rem', color: 'var(--text-muted)' }}>{v.type}</td>
+      <td style={{ padding: '1rem' }}>{v.maxLoadCapacity?.toLocaleString('en-IN')} kg</td>
+      <td style={{ padding: '1rem' }}>{v.odometer?.toLocaleString('en-IN')} km</td>
+      <td style={{ padding: '1rem', color: 'var(--color-success)' }}>₹{v.acquisitionCost?.toLocaleString('en-IN')}</td>
+      <td style={{ padding: '1rem' }}>{renderBadge(v.status)}</td>
+      <td style={{ padding: '1rem' }}>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button
+            onClick={(e) => { e.stopPropagation(); openEdit(v); }}
+            style={{
+              background: 'rgba(99, 102, 241, 0.1)', color: 'var(--color-primary)',
+              border: '1px solid rgba(99,102,241,0.2)', padding: '0.4rem 0.8rem',
+              borderRadius: '6px', fontSize: '0.85rem'
+            }}
+          >
+            Edit
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); handleDelete(v.id); }}
+            style={{
+              background: 'rgba(239, 68, 68, 0.1)', color: 'var(--color-danger)',
+              border: '1px solid rgba(239,68,68,0.2)', padding: '0.4rem 0.8rem',
+              borderRadius: '6px', fontSize: '0.85rem'
+            }}
+          >
+            Delete
+          </button>
         </div>
+      </td>
+    </>
+  );
 
-        {successMsg && <div className="alert alert-success">{successMsg}</div>}
-        {error && !modalOpen && <div className="alert alert-error">{error}</div>}
+  return (
+    <div className="page-container animate-fade-in">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
+        <div>
+          <h1 className="page-title">Vehicles</h1>
+          <p className="page-subtitle">Manage your fleet vehicles</p>
+        </div>
+        <button
+          onClick={openCreate}
+          style={{
+            background: 'var(--bg-gradient-primary)',
+            color: '#fff',
+            border: 'none',
+            padding: '0.75rem 1.5rem',
+            borderRadius: '8px',
+            fontWeight: 600,
+            boxShadow: 'var(--shadow-glow-primary)',
+            transition: 'transform 0.2s',
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+          onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+        >
+          + Add Vehicle
+        </button>
+      </div>
 
+      {successMsg && (
+        <div style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#34d399', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem', border: '1px solid rgba(16,185,129,0.2)' }}>
+          {successMsg}
+        </div>
+      )}
+      {error && !modalOpen && (
+        <div style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#fca5a5', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem', border: '1px solid rgba(239,68,68,0.2)' }}>
+          {error}
+        </div>
+      )}
+
+      <GlassCard>
         {loading ? (
-          <div className="loading-container"><div className="spinner"></div></div>
-        ) : vehicles.length === 0 ? (
-          <div className="empty-state">
-            <span className="empty-icon">🚗</span>
-            <h3>No vehicles yet</h3>
-            <p>Add your first vehicle to get started</p>
-          </div>
+          <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>Loading vehicles...</div>
         ) : (
-          <div className="table-container">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Reg. Number</th>
-                  <th>Name</th>
-                  <th>Type</th>
-                  <th>Max Load (kg)</th>
-                  <th>Odometer (km)</th>
-                  <th>Cost</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {vehicles.map((v) => (
-                  <tr key={v.id}>
-                    <td className="font-mono">{v.registrationNumber}</td>
-                    <td>{v.name}</td>
-                    <td>{v.type}</td>
-                    <td>{v.maxLoadCapacity?.toLocaleString()}</td>
-                    <td>{v.odometer?.toLocaleString()}</td>
-                    <td>${v.acquisitionCost?.toLocaleString()}</td>
-                    <td><span className={getStatusClass(v.status)}>{v.status.replace('_', ' ')}</span></td>
-                    <td>
-                      <div className="action-buttons">
-                        <button className="btn btn-sm btn-ghost" onClick={() => openEdit(v)}>Edit</button>
-                        <button className="btn btn-sm btn-danger" onClick={() => handleDelete(v.id)}>Delete</button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <ModernTable headers={tableHeaders} data={vehicles} renderRow={renderRow} emptyMessage="No vehicles found. Add your first vehicle to get started." />
+        )}
+      </GlassCard>
+
+      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Edit Vehicle' : 'Add Vehicle'}>
+        {error && modalOpen && (
+          <div style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#fca5a5', padding: '1rem', borderRadius: '8px', marginBottom: '1rem', border: '1px solid rgba(239,68,68,0.2)' }}>
+            {error}
           </div>
         )}
-
-        <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Edit Vehicle' : 'Add Vehicle'}>
-          {error && modalOpen && <div className="alert alert-error">{error}</div>}
-          <form onSubmit={handleSubmit}>
-            <div className="form-grid">
-              <div className="form-group">
-                <label>Registration Number</label>
-                <input value={form.registrationNumber} onChange={(e) => setForm({...form, registrationNumber: e.target.value})} required />
-              </div>
-              <div className="form-group">
-                <label>Vehicle Name</label>
-                <input value={form.name} onChange={(e) => setForm({...form, name: e.target.value})} required />
-              </div>
-              <div className="form-group">
-                <label>Type</label>
-                <select value={form.type} onChange={(e) => setForm({...form, type: e.target.value})}>
-                  {VEHICLE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Max Load Capacity (kg)</label>
-                <input type="number" step="0.01" value={form.maxLoadCapacity} onChange={(e) => setForm({...form, maxLoadCapacity: parseFloat(e.target.value) || ''})} required />
-              </div>
-              <div className="form-group">
-                <label>Odometer (km)</label>
-                <input type="number" step="0.01" value={form.odometer} onChange={(e) => setForm({...form, odometer: parseFloat(e.target.value) || ''})} required />
-              </div>
-              <div className="form-group">
-                <label>Acquisition Cost ($)</label>
-                <input type="number" step="0.01" value={form.acquisitionCost} onChange={(e) => setForm({...form, acquisitionCost: parseFloat(e.target.value) || ''})} required />
-              </div>
-              <div className="form-group">
-                <label>Status</label>
-                <select value={form.status} onChange={(e) => setForm({...form, status: e.target.value})}>
-                  {VEHICLE_STATUSES.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
-                </select>
-              </div>
+        <form onSubmit={handleSubmit}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+            <div>
+              <label>Registration Number</label>
+              <input value={form.registrationNumber} onChange={(e) => setForm({ ...form, registrationNumber: e.target.value })} required />
             </div>
-            <div className="form-actions">
-              <button type="button" className="btn btn-ghost" onClick={() => setModalOpen(false)}>Cancel</button>
-              <button type="submit" className="btn btn-primary">{editing ? 'Update' : 'Create'}</button>
+            <div>
+              <label>Vehicle Name</label>
+              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
             </div>
-          </form>
-        </Modal>
-      </main>
+            <div>
+              <label>Type</label>
+              <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
+                {VEHICLE_TYPES.map(t => <option key={t} value={t} style={{ background: 'var(--bg-main)' }}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <label>Max Load Capacity (kg)</label>
+              <input type="number" step="0.01" value={form.maxLoadCapacity} onChange={(e) => setForm({ ...form, maxLoadCapacity: parseFloat(e.target.value) || '' })} required />
+            </div>
+            <div>
+              <label>Odometer (km)</label>
+              <input type="number" step="0.01" value={form.odometer} onChange={(e) => setForm({ ...form, odometer: parseFloat(e.target.value) || '' })} required />
+            </div>
+            <div>
+              <label>Acquisition Cost (₹)</label>
+              <input type="number" step="0.01" value={form.acquisitionCost} onChange={(e) => setForm({ ...form, acquisitionCost: parseFloat(e.target.value) || '' })} required />
+            </div>
+            <div style={{ gridColumn: 'span 2' }}>
+              <label>Status</label>
+              <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
+                {VEHICLE_STATUSES.map(s => <option key={s} value={s} style={{ background: 'var(--bg-main)' }}>{s.replace('_', ' ')}</option>)}
+              </select>
+            </div>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+            <button type="button" onClick={() => setModalOpen(false)} style={{ background: 'transparent', border: '1px solid var(--border-input)', color: 'var(--text-main)', padding: '0.75rem 1.5rem', borderRadius: '8px' }}>
+              Cancel
+            </button>
+            <button type="submit" style={{ background: 'var(--bg-gradient-primary)', border: 'none', color: '#fff', padding: '0.75rem 1.5rem', borderRadius: '8px', fontWeight: 600, boxShadow: 'var(--shadow-glow-primary)' }}>
+              {editing ? 'Update' : 'Create'}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };

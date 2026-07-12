@@ -1,18 +1,22 @@
 import { useState, useEffect } from 'react';
 import axiosInstance from '../api/axiosInstance';
+import GlassCard from '../components/GlassCard';
+import ModernTable from '../components/ModernTable';
 
 export default function FuelExpense() {
-    // ─── Fuel Log State ───
     const [fuelLogs, setFuelLogs] = useState([]);
     const [fuelForm, setFuelForm] = useState({ vehicleId: '', liters: '', cost: '', logDate: '' });
 
-    // ─── Expense State ───
     const [expenses, setExpenses] = useState([]);
     const [expenseForm, setExpenseForm] = useState({ vehicleId: '', type: '', cost: '', logDate: '' });
 
-    const [message, setMessage] = useState('');
+    const [notification, setNotification] = useState(null);
 
-    // ─── Fetch ───
+    const showNotification = (type, message) => {
+        setNotification({ type, message });
+        setTimeout(() => setNotification(null), 5000);
+    };
+
     const fetchFuelLogs = async () => {
         try {
             const res = await axiosInstance.get('/fuel-logs');
@@ -29,12 +33,13 @@ export default function FuelExpense() {
 
     useEffect(() => { fetchFuelLogs(); fetchExpenses(); }, []);
 
-    // ─── Fuel Log Handlers ───
     const handleFuelChange = (e) => setFuelForm({ ...fuelForm, [e.target.name]: e.target.value });
-
     const handleFuelSubmit = async (e) => {
         e.preventDefault();
-        setMessage('');
+        if (Number(fuelForm.liters) <= 0 || Number(fuelForm.cost) < 0) {
+            showNotification('warning', 'Liters must be > 0 and cost cannot be negative.');
+            return;
+        }
         try {
             await axiosInstance.post('/fuel-logs', {
                 vehicleId: Number(fuelForm.vehicleId),
@@ -42,20 +47,21 @@ export default function FuelExpense() {
                 cost: Number(fuelForm.cost),
                 logDate: fuelForm.logDate,
             });
-            setMessage('Fuel log created');
+            showNotification('success', 'Fuel log created');
             setFuelForm({ vehicleId: '', liters: '', cost: '', logDate: '' });
             fetchFuelLogs();
         } catch (err) {
-            setMessage(err.response?.data?.message || 'Error creating fuel log');
+            showNotification('danger', err.response?.data?.message || 'Error creating fuel log');
         }
     };
 
-    // ─── Expense Handlers ───
     const handleExpenseChange = (e) => setExpenseForm({ ...expenseForm, [e.target.name]: e.target.value });
-
     const handleExpenseSubmit = async (e) => {
         e.preventDefault();
-        setMessage('');
+        if (Number(expenseForm.cost) < 0) {
+            showNotification('warning', 'Cost cannot be negative.');
+            return;
+        }
         try {
             await axiosInstance.post('/expenses', {
                 vehicleId: Number(expenseForm.vehicleId),
@@ -63,141 +69,114 @@ export default function FuelExpense() {
                 cost: Number(expenseForm.cost),
                 logDate: expenseForm.logDate,
             });
-            setMessage('Expense created');
+            showNotification('success', 'Expense created');
             setExpenseForm({ vehicleId: '', type: '', cost: '', logDate: '' });
             fetchExpenses();
         } catch (err) {
-            setMessage(err.response?.data?.message || 'Error creating expense');
+            showNotification('danger', err.response?.data?.message || 'Error creating expense');
         }
     };
 
+    const fuelHeaders = ['ID', 'Vehicle ID', 'Liters', 'Cost', 'Date'];
+    const fuelRow = (f) => (
+        <>
+            <td style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-muted)' }}>#{f.id}</td>
+            <td style={{ padding: '1rem', color: 'var(--color-info)' }}>{f.vehicleId}</td>
+            <td style={{ padding: '1rem' }}>{f.liters} L</td>
+            <td style={{ padding: '1rem', color: 'var(--color-danger)' }}>₹{f.cost?.toLocaleString('en-IN')}</td>
+            <td style={{ padding: '1rem' }}>{f.logDate}</td>
+        </>
+    );
+
+    const expHeaders = ['ID', 'Vehicle ID', 'Type', 'Cost', 'Date'];
+    const expRow = (ex) => (
+        <>
+            <td style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-muted)' }}>#{ex.id}</td>
+            <td style={{ padding: '1rem', color: 'var(--color-info)' }}>{ex.vehicleId}</td>
+            <td style={{ padding: '1rem', fontWeight: 500 }}>{ex.type}</td>
+            <td style={{ padding: '1rem', color: 'var(--color-danger)' }}>₹{ex.cost?.toLocaleString('en-IN')}</td>
+            <td style={{ padding: '1rem' }}>{ex.logDate}</td>
+        </>
+    );
+
     return (
-        <div className="page-container">
-            <div className="page-header">
-                <h1>⛽ Fuel Logs & Expenses</h1>
-                <p className="subtitle">Track fuel consumption and operational expenses</p>
+        <div className="page-container animate-fade-in">
+            <div style={{ marginBottom: '2rem' }}>
+                <h1 className="page-title">Fuel Logs & Expenses</h1>
+                <p className="page-subtitle">Track fuel consumption and operational expenses</p>
             </div>
 
-            {message && <div className="alert">{message}</div>}
+            {notification && (
+                <div style={{
+                    background: notification.type === 'success' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                    color: notification.type === 'success' ? '#34d399' : '#fca5a5',
+                    padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem',
+                    border: `1px solid ${notification.type === 'success' ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}`
+                }}>
+                    {notification.message}
+                </div>
+            )}
 
-            {/* ─────── FUEL LOGS SECTION ─────── */}
-            <div className="card">
-                <h2>⛽ New Fuel Log</h2>
-                <form onSubmit={handleFuelSubmit} className="form-grid">
-                    <div className="form-group">
-                        <label htmlFor="fuel-vehicleId">Vehicle ID</label>
-                        <input id="fuel-vehicleId" name="vehicleId" type="number" placeholder="e.g. 1"
-                            value={fuelForm.vehicleId} onChange={handleFuelChange} required />
-                    </div>
-                    <div className="form-group">
-                        <label htmlFor="fuel-liters">Liters</label>
-                        <input id="fuel-liters" name="liters" type="number" step="0.01" placeholder="0.00"
-                            value={fuelForm.liters} onChange={handleFuelChange} required />
-                    </div>
-                    <div className="form-group">
-                        <label htmlFor="fuel-cost">Cost (₹)</label>
-                        <input id="fuel-cost" name="cost" type="number" step="0.01" placeholder="0.00"
-                            value={fuelForm.cost} onChange={handleFuelChange} required />
-                    </div>
-                    <div className="form-group">
-                        <label htmlFor="fuel-logDate">Date</label>
-                        <input id="fuel-logDate" name="logDate" type="date"
-                            value={fuelForm.logDate} onChange={handleFuelChange} required />
-                    </div>
-                    <button type="submit" className="btn btn-primary">+ Add Fuel Log</button>
-                </form>
-            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
+                <GlassCard title="New Fuel Log">
+                    <form onSubmit={handleFuelSubmit}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
+                            <div>
+                                <label>Vehicle ID</label>
+                                <input name="vehicleId" type="number" placeholder="e.g. 1" value={fuelForm.vehicleId} onChange={handleFuelChange} required />
+                            </div>
+                            <div>
+                                <label>Liters</label>
+                                <input name="liters" type="number" step="0.01" placeholder="0.00" value={fuelForm.liters} onChange={handleFuelChange} required />
+                            </div>
+                            <div>
+                                <label>Cost (₹)</label>
+                                <input name="cost" type="number" step="0.01" placeholder="0.00" value={fuelForm.cost} onChange={handleFuelChange} required />
+                            </div>
+                            <div>
+                                <label>Date</label>
+                                <input name="logDate" type="date" value={fuelForm.logDate} onChange={handleFuelChange} required />
+                            </div>
+                        </div>
+                        <button type="submit" style={{ width: '100%', background: 'var(--bg-gradient-primary)', border: 'none', color: '#fff', padding: '0.75rem', borderRadius: '8px', fontWeight: 600, boxShadow: 'var(--shadow-glow-primary)' }}>
+                            + Add Fuel Log
+                        </button>
+                    </form>
+                </GlassCard>
 
-            <div className="card">
-                <h2>Fuel Log History</h2>
-                {fuelLogs.length === 0 ? (
-                    <p className="empty-state">No fuel logs found.</p>
-                ) : (
-                    <div className="table-wrapper">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Vehicle ID</th>
-                                    <th>Liters</th>
-                                    <th>Cost</th>
-                                    <th>Date</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {fuelLogs.map((f) => (
-                                    <tr key={f.id}>
-                                        <td>{f.id}</td>
-                                        <td>{f.vehicleId}</td>
-                                        <td>{f.liters}</td>
-                                        <td>₹{f.cost?.toFixed(2)}</td>
-                                        <td>{f.logDate}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
-            </div>
+                <GlassCard title="New Expense">
+                    <form onSubmit={handleExpenseSubmit}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
+                            <div>
+                                <label>Vehicle ID</label>
+                                <input name="vehicleId" type="number" placeholder="e.g. 1" value={expenseForm.vehicleId} onChange={handleExpenseChange} required />
+                            </div>
+                            <div>
+                                <label>Type</label>
+                                <input name="type" type="text" placeholder="e.g. Toll, Parking" value={expenseForm.type} onChange={handleExpenseChange} required />
+                            </div>
+                            <div>
+                                <label>Cost (₹)</label>
+                                <input name="cost" type="number" step="0.01" placeholder="0.00" value={expenseForm.cost} onChange={handleExpenseChange} required />
+                            </div>
+                            <div>
+                                <label>Date</label>
+                                <input name="logDate" type="date" value={expenseForm.logDate} onChange={handleExpenseChange} required />
+                            </div>
+                        </div>
+                        <button type="submit" style={{ width: '100%', background: 'var(--bg-gradient-primary)', border: 'none', color: '#fff', padding: '0.75rem', borderRadius: '8px', fontWeight: 600, boxShadow: 'var(--shadow-glow-primary)' }}>
+                            + Add Expense
+                        </button>
+                    </form>
+                </GlassCard>
 
-            {/* ─────── EXPENSES SECTION ─────── */}
-            <div className="card">
-                <h2>💳 New Expense</h2>
-                <form onSubmit={handleExpenseSubmit} className="form-grid">
-                    <div className="form-group">
-                        <label htmlFor="exp-vehicleId">Vehicle ID</label>
-                        <input id="exp-vehicleId" name="vehicleId" type="number" placeholder="e.g. 1"
-                            value={expenseForm.vehicleId} onChange={handleExpenseChange} required />
-                    </div>
-                    <div className="form-group">
-                        <label htmlFor="exp-type">Type</label>
-                        <input id="exp-type" name="type" type="text" placeholder="e.g. Toll, Parking"
-                            value={expenseForm.type} onChange={handleExpenseChange} required />
-                    </div>
-                    <div className="form-group">
-                        <label htmlFor="exp-cost">Cost (₹)</label>
-                        <input id="exp-cost" name="cost" type="number" step="0.01" placeholder="0.00"
-                            value={expenseForm.cost} onChange={handleExpenseChange} required />
-                    </div>
-                    <div className="form-group">
-                        <label htmlFor="exp-logDate">Date</label>
-                        <input id="exp-logDate" name="logDate" type="date"
-                            value={expenseForm.logDate} onChange={handleExpenseChange} required />
-                    </div>
-                    <button type="submit" className="btn btn-primary">+ Add Expense</button>
-                </form>
-            </div>
+                <GlassCard title="Fuel Log History">
+                    <ModernTable headers={fuelHeaders} data={fuelLogs} renderRow={fuelRow} emptyMessage="No fuel logs found." />
+                </GlassCard>
 
-            <div className="card">
-                <h2>Expense History</h2>
-                {expenses.length === 0 ? (
-                    <p className="empty-state">No expenses found.</p>
-                ) : (
-                    <div className="table-wrapper">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Vehicle ID</th>
-                                    <th>Type</th>
-                                    <th>Cost</th>
-                                    <th>Date</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {expenses.map((ex) => (
-                                    <tr key={ex.id}>
-                                        <td>{ex.id}</td>
-                                        <td>{ex.vehicleId}</td>
-                                        <td>{ex.type}</td>
-                                        <td>₹{ex.cost?.toFixed(2)}</td>
-                                        <td>{ex.logDate}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
+                <GlassCard title="Expense History">
+                    <ModernTable headers={expHeaders} data={expenses} renderRow={expRow} emptyMessage="No expenses found." />
+                </GlassCard>
             </div>
         </div>
     );
