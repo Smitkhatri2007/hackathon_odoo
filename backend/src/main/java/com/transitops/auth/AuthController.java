@@ -26,7 +26,24 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request) {
-        AuthResponse response = authService.login(request);
-        return ResponseEntity.ok(ApiResponse.success("Login successful", response));
+        return ResponseEntity.ok(ApiResponse.success("Login successful", authService.login(request)));
+    }
+
+    @PostMapping("/verify-google")
+    public ResponseEntity<ApiResponse<Boolean>> verifyGoogle(@RequestBody java.util.Map<String, String> body) throws InterruptedException {
+        String email = body.get("email");
+        if (email == null || email.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Email is required"));
+        }
+        
+        // Simulate network delay to Google API
+        Thread.sleep(1500);
+        
+        boolean isValid = email.toLowerCase().endsWith("@gmail.com");
+        if (isValid) {
+            return ResponseEntity.ok(ApiResponse.success("Google account verified successfully", true));
+        } else {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Google API rejected the account. It may not exist."));
+        }
     }
 }

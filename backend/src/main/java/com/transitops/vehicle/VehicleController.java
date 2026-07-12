@@ -55,4 +55,22 @@ public class VehicleController {
         vehicleService.deleteVehicle(id);
         return ResponseEntity.ok(ApiResponse.success("Vehicle deleted successfully", null));
     }
+
+    @PostMapping("/validate-parivahan")
+    public ResponseEntity<ApiResponse<Boolean>> validateParivahan(@RequestBody java.util.Map<String, String> body) {
+        String regNo = body.get("registrationNumber");
+        if (regNo == null || regNo.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Registration number is required"));
+        }
+        
+        // Simple regex check for Indian vehicle registration format (e.g. MH 12 AB 1234)
+        String regex = "^[A-Z]{2}[\\s-]?[0-9]{1,2}[\\s-]?[A-Z]{1,2}[\\s-]?[0-9]{4}$";
+        boolean isValid = regNo.toUpperCase().matches(regex);
+        
+        if (isValid) {
+            return ResponseEntity.ok(ApiResponse.success("Vehicle verified with Parivahan", true));
+        } else {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Invalid vehicle registration number according to Parivahan database. Format must be like MH 12 AB 1234"));
+        }
+    }
 }

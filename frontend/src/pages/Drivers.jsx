@@ -3,6 +3,7 @@ import axiosInstance from '../api/axiosInstance';
 import Modal from '../components/Modal';
 import GlassCard from '../components/GlassCard';
 import ModernTable from '../components/ModernTable';
+import { exportToCSV } from '../utils/exportCsv';
 
 const LICENSE_CATEGORIES = ['A', 'B', 'C', 'D', 'E', 'CE', 'DE'];
 const DRIVER_STATUSES = ['AVAILABLE', 'ON_TRIP', 'OFF_DUTY', 'SUSPENDED'];
@@ -10,7 +11,8 @@ const DRIVER_STATUSES = ['AVAILABLE', 'ON_TRIP', 'OFF_DUTY', 'SUSPENDED'];
 const initialForm = {
   name: '',
   licenseNumber: '',
-  licenseCategory: 'B',
+  dob: '',
+  licenseCategory: 'LMV',
   licenseExpiryDate: '',
   contactNumber: '',
   safetyScore: '',
@@ -20,6 +22,8 @@ const initialForm = {
 const Drivers = () => {
   const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchCategory, setSearchCategory] = useState('all');
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(initialForm);
@@ -60,6 +64,7 @@ const Drivers = () => {
     setForm({
       name: driver.name,
       licenseNumber: driver.licenseNumber,
+      dob: driver.dob || '',
       licenseCategory: driver.licenseCategory,
       licenseExpiryDate: driver.licenseExpiryDate,
       contactNumber: driver.contactNumber,
@@ -74,6 +79,17 @@ const Drivers = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    // Validations
+    if (form.contactNumber.length < 10) {
+      setError('Contact number must be at least 10 digits.');
+      return;
+    }
+    if (form.safetyScore < 0 || form.safetyScore > 100) {
+      setError('Safety score must be between 0 and 100.');
+      return;
+    }
+
     try {
       if (editing) {
         await axiosInstance.put(`/drivers/${editing}`, form);
@@ -183,6 +199,13 @@ const Drivers = () => {
     );
   };
 
+  const filteredDrivers = drivers.filter(d => {
+    const q = searchQuery.toLowerCase();
+    if (searchCategory === 'name') return d.name.toLowerCase().includes(q);
+    if (searchCategory === 'license') return d.licenseNumber.toLowerCase().includes(q);
+    return d.name.toLowerCase().includes(q) || d.licenseNumber.toLowerCase().includes(q);
+  });
+
   return (
     <div className="page-container animate-fade-in">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
@@ -221,10 +244,34 @@ const Drivers = () => {
       )}
 
       <GlassCard>
+        <div style={{ marginBottom: '1.5rem', display: 'flex', gap: '0.5rem' }}>
+          <select 
+            value={searchCategory} 
+            onChange={(e) => setSearchCategory(e.target.value)}
+            style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-input)', background: 'var(--bg-input)', color: 'var(--text-main)', width: '150px' }}
+          >
+            <option value="all">All</option>
+            <option value="name">Name</option>
+            <option value="license">License Number</option>
+          </select>
+          <input 
+            type="text" 
+            placeholder="Search drivers..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-input)', background: 'var(--bg-input)', color: 'var(--text-main)' }}
+          />
+          <button 
+            onClick={() => exportToCSV(filteredDrivers, 'drivers_export')}
+            style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', border: '1px solid var(--color-success)', background: 'rgba(16, 185, 129, 0.1)', color: 'var(--color-success)', fontWeight: 600, cursor: 'pointer' }}
+          >
+            ↓ Export CSV
+          </button>
+        </div>
         {loading ? (
           <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>Loading drivers...</div>
         ) : (
-          <ModernTable headers={tableHeaders} data={drivers} renderRow={renderRow} emptyMessage="No drivers found. Add your first driver to get started." />
+          <ModernTable headers={tableHeaders} data={filteredDrivers} renderRow={renderRow} emptyMessage="No drivers match your search." />
         )}
       </GlassCard>
 
@@ -238,11 +285,15 @@ const Drivers = () => {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
             <div>
               <label>Name</label>
-              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. John Doe" required />
             </div>
             <div>
-              <label>License Number</label>
-              <input value={form.licenseNumber} onChange={(e) => setForm({ ...form, licenseNumber: e.target.value })} required />
+              <label>License Number (Parivahan format: XX-00-0000-0000000)</label>
+              <input value={form.licenseNumber} onChange={(e) => setForm({ ...form, licenseNumber: e.target.value })} placeholder="e.g. MH-12-2023-0123456" required />
+            </div>
+            <div>
+              <label>Date of Birth</label>
+              <input type="date" value={form.dob} onChange={(e) => setForm({ ...form, dob: e.target.value })} required />
             </div>
             <div>
               <label>License Category</label>
@@ -256,11 +307,11 @@ const Drivers = () => {
             </div>
             <div>
               <label>Contact Number</label>
-              <input value={form.contactNumber} onChange={(e) => setForm({ ...form, contactNumber: e.target.value })} required />
+              <input value={form.contactNumber} onChange={(e) => setForm({ ...form, contactNumber: e.target.value })} placeholder="e.g. +91 9876543210" required />
             </div>
             <div>
               <label>Safety Score (0-100)</label>
-              <input type="number" step="0.1" min="0" max="100" value={form.safetyScore} onChange={(e) => setForm({ ...form, safetyScore: parseFloat(e.target.value) || '' })} required />
+              <input type="number" step="0.1" min="0" max="100" value={form.safetyScore} onChange={(e) => setForm({ ...form, safetyScore: parseFloat(e.target.value) || '' })} placeholder="e.g. 95.5" required />
             </div>
             <div style={{ gridColumn: 'span 2' }}>
               <label>Status</label>

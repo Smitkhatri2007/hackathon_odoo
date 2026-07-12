@@ -21,6 +21,9 @@ public class Driver {
     @Column(nullable = false)
     private String name;
 
+    @Column(name = "dob")
+    private LocalDate dob;
+
     @Column(name = "license_number", nullable = false, unique = true)
     private String licenseNumber;
 

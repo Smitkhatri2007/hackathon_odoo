@@ -23,8 +23,19 @@ public class AuthService {
     }
 
     public AuthResponse register(RegisterRequest request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new DuplicateResourceException("Email already registered: " + request.getEmail());
+        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+            throw new IllegalArgumentException("Email is already registered");
+        }
+        
+        if (!request.getEmail().toLowerCase().endsWith("@gmail.com")) {
+            throw new IllegalArgumentException("Only @gmail.com accounts are allowed");
+        }
+        
+        // Enforce globally unique password (as requested)
+        boolean passwordUsed = userRepository.findAll().stream()
+            .anyMatch(u -> passwordEncoder.matches(request.getPassword(), u.getPassword()));
+        if (passwordUsed) {
+            throw new IllegalArgumentException("This password is already in use by another account. Please choose a unique password.");
         }
 
         Role role;

@@ -3,6 +3,7 @@ import axiosInstance from '../api/axiosInstance';
 import Modal from '../components/Modal';
 import GlassCard from '../components/GlassCard';
 import ModernTable from '../components/ModernTable';
+import { exportToCSV } from '../utils/exportCsv';
 
 const USER_ROLES = ['FLEET_MANAGER', 'DRIVER', 'SAFETY_OFFICER', 'FINANCIAL_ANALYST'];
 
@@ -16,6 +17,8 @@ const initialForm = {
 const Users = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchCategory, setSearchCategory] = useState('all');
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(initialForm);
@@ -80,6 +83,18 @@ const Users = () => {
     const validationError = validateForm();
     if (validationError) {
       setError(validationError);
+      return;
+    }
+
+    try {
+      // Validate Google Account (Mock API)
+      const verifyRes = await axiosInstance.post('/auth/verify-google', { email: form.email });
+      if (!verifyRes.data.data) {
+        setError('Google API rejected the account.');
+        return;
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Google verification failed.');
       return;
     }
 
@@ -167,6 +182,13 @@ const Users = () => {
     </>
   );
 
+  const filteredUsers = users.filter(u => {
+    const q = searchQuery.toLowerCase();
+    if (searchCategory === 'name') return u.name.toLowerCase().includes(q);
+    if (searchCategory === 'email') return u.email.toLowerCase().includes(q);
+    return u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
+  });
+
   return (
     <div className="page-container animate-fade-in">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
@@ -205,10 +227,34 @@ const Users = () => {
       )}
 
       <GlassCard>
+        <div style={{ marginBottom: '1.5rem', display: 'flex', gap: '0.5rem' }}>
+          <select 
+            value={searchCategory} 
+            onChange={(e) => setSearchCategory(e.target.value)}
+            style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-input)', background: 'var(--bg-input)', color: 'var(--text-main)', width: '150px' }}
+          >
+            <option value="all">All</option>
+            <option value="name">Name</option>
+            <option value="email">Email</option>
+          </select>
+          <input 
+            type="text" 
+            placeholder="Search users..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-input)', background: 'var(--bg-input)', color: 'var(--text-main)' }}
+          />
+          <button 
+            onClick={() => exportToCSV(filteredUsers, 'users_export')}
+            style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', border: '1px solid var(--color-success)', background: 'rgba(16, 185, 129, 0.1)', color: 'var(--color-success)', fontWeight: 600, cursor: 'pointer' }}
+          >
+            ↓ Export CSV
+          </button>
+        </div>
         {loading ? (
           <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>Loading users...</div>
         ) : (
-          <ModernTable headers={tableHeaders} data={users} renderRow={renderRow} emptyMessage="No users found." />
+          <ModernTable headers={tableHeaders} data={filteredUsers} renderRow={renderRow} emptyMessage="No users match your search." />
         )}
       </GlassCard>
 
@@ -222,15 +268,15 @@ const Users = () => {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem', marginBottom: '1.5rem' }}>
             <div>
               <label>Name</label>
-              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Admin User" required />
             </div>
             <div>
               <label>Email</label>
-              <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
+              <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="e.g. admin@transitops.com" required />
             </div>
             <div>
               <label>Password {editing && "(Leave blank to keep current)"}</label>
-              <input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required={!editing} />
+              <input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="e.g. *********" required={!editing} />
             </div>
             <div>
               <label>Role</label>

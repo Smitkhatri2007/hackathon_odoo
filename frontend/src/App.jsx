@@ -1,4 +1,6 @@
-import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-router-dom';
+import Login from './pages/Login';
+import Register from './pages/Register';
 
 // =============================================
 // TEAMMATE IMPORTS — add your page imports here
@@ -20,13 +22,11 @@ import Dashboard from './pages/Dashboard';
 import Reports from './pages/Reports';
 
 // =============================================
-// ProtectedRoute — placeholder until Auth module is ready
-// Replace this with real JWT check from Person 1's auth module
+// ProtectedRoute
 // =============================================
 function ProtectedRoute({ children }) {
-  // TODO: Replace with actual auth check (e.g., check JWT in localStorage)
-  const isAuthenticated = true; // Allow access during development
-  return isAuthenticated ? children : <Navigate to="/login" replace />;
+  const token = localStorage.getItem('token');
+  return token ? children : <Navigate to="/login" replace />;
 }
 
 // =============================================
@@ -43,6 +43,7 @@ const navStyle = {
   top: 0,
   zIndex: 100,
   alignItems: 'center',
+  flexWrap: 'wrap',
 };
 
 const linkStyle = (isActive) => ({
@@ -69,25 +70,52 @@ const brandStyle = {
 
 function NavBar() {
   const location = useLocation();
+  const navigate = useNavigate();
+
+  if (location.pathname === '/login' || location.pathname === '/register') return null;
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    navigate('/login');
+  };
 
   return (
-    <nav style={navStyle}>
-      <span style={brandStyle}>TransitOps</span>
+    <nav style={navStyle} aria-label="Main Navigation">
+      <span style={brandStyle} aria-label="TransitOps Brand">TransitOps</span>
       {/* Person 1 routes */}
-      <Link to="/vehicles" style={linkStyle(location.pathname === '/vehicles')}>Vehicles</Link>
-      <Link to="/drivers" style={linkStyle(location.pathname === '/drivers')}>Drivers</Link>
-      <Link to="/users" style={linkStyle(location.pathname === '/users')}>Users</Link>
+      <Link to="/vehicles" style={linkStyle(location.pathname === '/vehicles')} aria-label="Vehicles Tab">Vehicles</Link>
+      <Link to="/drivers" style={linkStyle(location.pathname === '/drivers')} aria-label="Drivers Tab">Drivers</Link>
+      <Link to="/users" style={linkStyle(location.pathname === '/users')} aria-label="Users Tab">Users</Link>
 
       {/* Person 2 routes */}
-      <Link to="/trips" style={linkStyle(location.pathname === '/trips')}>Trips</Link>
+      <Link to="/trips" style={linkStyle(location.pathname === '/trips')} aria-label="Trips Tab">Trips</Link>
 
       {/* Person 3 routes */}
-      <Link to="/maintenance" style={linkStyle(location.pathname === '/maintenance')}>Maintenance</Link>
-      <Link to="/fuel-expenses" style={linkStyle(location.pathname === '/fuel-expenses')}>Fuel & Expenses</Link>
+      <Link to="/maintenance" style={linkStyle(location.pathname === '/maintenance')} aria-label="Maintenance Tab">Maintenance</Link>
+      <Link to="/fuel-expenses" style={linkStyle(location.pathname === '/fuel-expenses')} aria-label="Fuel & Expenses Tab">Fuel & Expenses</Link>
 
       {/* Person 4 routes — DO NOT REMOVE */}
-      <Link to="/dashboard" style={linkStyle(location.pathname === '/dashboard')}>Dashboard</Link>
-      <Link to="/reports" style={linkStyle(location.pathname === '/reports')}>Reports</Link>
+      <Link to="/dashboard" style={linkStyle(location.pathname === '/dashboard')} aria-label="Dashboard Tab">Dashboard</Link>
+      <Link to="/reports" style={linkStyle(location.pathname === '/reports')} aria-label="Reports Tab">Reports</Link>
+      
+      <button 
+        onClick={handleLogout}
+        aria-label="Logout"
+        style={{
+          marginLeft: 'auto',
+          background: 'rgba(239, 68, 68, 0.1)',
+          color: '#fca5a5',
+          border: '1px solid rgba(239,68,68,0.2)',
+          padding: '0.4rem 0.75rem',
+          borderRadius: '6px',
+          fontWeight: 500,
+          fontSize: '0.85rem',
+          cursor: 'pointer',
+        }}
+      >
+        Logout
+      </button>
     </nav>
   );
 }
@@ -102,6 +130,10 @@ function App() {
       <Routes>
         {/* Default redirect */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        
+        {/* Public Routes */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
 
         {/* ============================================= */}
         {/* TEAMMATE ROUTES — add your routes below       */}

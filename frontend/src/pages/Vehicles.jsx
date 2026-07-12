@@ -3,6 +3,7 @@ import axiosInstance from '../api/axiosInstance';
 import Modal from '../components/Modal';
 import GlassCard from '../components/GlassCard';
 import ModernTable from '../components/ModernTable';
+import { exportToCSV } from '../utils/exportCsv';
 
 const VEHICLE_TYPES = ['Truck', 'Van', 'Bus', 'Car', 'Trailer', 'Tanker'];
 const VEHICLE_STATUSES = ['AVAILABLE', 'ON_TRIP', 'IN_SHOP', 'RETIRED'];
@@ -20,11 +21,14 @@ const initialForm = {
 const Vehicles = () => {
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchCategory, setSearchCategory] = useState('all');
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(initialForm);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   const fetchVehicles = async () => {
     try {
@@ -98,6 +102,11 @@ const Vehicles = () => {
     }
 
     try {
+      setSubmitting(true);
+      
+      // Call mock Parivahan Validation
+      await axiosInstance.post('/vehicles/validate-parivahan', { registrationNumber: form.registrationNumber });
+      
       if (editing) {
         await axiosInstance.put(`/vehicles/${editing}`, form);
         setSuccessMsg('Vehicle updated successfully');
@@ -109,6 +118,8 @@ const Vehicles = () => {
       fetchVehicles();
     } catch (err) {
       setError(err.response?.data?.message || 'Operation failed');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -184,6 +195,14 @@ const Vehicles = () => {
     </>
   );
 
+  const filteredVehicles = vehicles.filter(v => {
+    const q = searchQuery.toLowerCase();
+    if (searchCategory === 'name') return v.name.toLowerCase().includes(q);
+    if (searchCategory === 'registration') return v.registrationNumber.toLowerCase().includes(q);
+    if (searchCategory === 'type') return v.type.toLowerCase().includes(q);
+    return v.name.toLowerCase().includes(q) || v.registrationNumber.toLowerCase().includes(q) || v.type.toLowerCase().includes(q);
+  });
+
   return (
     <div className="page-container animate-fade-in">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
@@ -222,10 +241,35 @@ const Vehicles = () => {
       )}
 
       <GlassCard>
+        <div style={{ marginBottom: '1.5rem', display: 'flex', gap: '0.5rem' }}>
+          <select 
+            value={searchCategory} 
+            onChange={(e) => setSearchCategory(e.target.value)}
+            style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-input)', background: 'var(--bg-input)', color: 'var(--text-main)', width: '150px' }}
+          >
+            <option value="all">All</option>
+            <option value="registration">Reg. Number</option>
+            <option value="name">Name</option>
+            <option value="type">Type</option>
+          </select>
+          <input 
+            type="text" 
+            placeholder="Search vehicles..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-input)', background: 'var(--bg-input)', color: 'var(--text-main)' }}
+          />
+          <button 
+            onClick={() => exportToCSV(filteredVehicles, 'vehicles_export')}
+            style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', border: '1px solid var(--color-success)', background: 'rgba(16, 185, 129, 0.1)', color: 'var(--color-success)', fontWeight: 600, cursor: 'pointer' }}
+          >
+            ↓ Export CSV
+          </button>
+        </div>
         {loading ? (
           <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>Loading vehicles...</div>
         ) : (
-          <ModernTable headers={tableHeaders} data={vehicles} renderRow={renderRow} emptyMessage="No vehicles found. Add your first vehicle to get started." />
+          <ModernTable headers={tableHeaders} data={filteredVehicles} renderRow={renderRow} emptyMessage="No vehicles match your search." />
         )}
       </GlassCard>
 
@@ -239,11 +283,11 @@ const Vehicles = () => {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
             <div>
               <label>Registration Number</label>
-              <input value={form.registrationNumber} onChange={(e) => setForm({ ...form, registrationNumber: e.target.value })} required />
+              <input value={form.registrationNumber} onChange={(e) => setForm({ ...form, registrationNumber: e.target.value })} placeholder="e.g. MH-12-AB-1234" required />
             </div>
             <div>
               <label>Vehicle Name</label>
-              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Tata Prima 4028.S" required />
             </div>
             <div>
               <label>Type</label>
@@ -253,15 +297,15 @@ const Vehicles = () => {
             </div>
             <div>
               <label>Max Load Capacity (kg)</label>
-              <input type="number" step="0.01" value={form.maxLoadCapacity} onChange={(e) => setForm({ ...form, maxLoadCapacity: parseFloat(e.target.value) || '' })} required />
+              <input type="number" step="0.01" min="0" value={form.maxLoadCapacity} onChange={(e) => setForm({ ...form, maxLoadCapacity: parseFloat(e.target.value) || '' })} placeholder="e.g. 40000 (kg)" required />
             </div>
             <div>
               <label>Odometer (km)</label>
-              <input type="number" step="0.01" value={form.odometer} onChange={(e) => setForm({ ...form, odometer: parseFloat(e.target.value) || '' })} required />
+              <input type="number" step="0.01" min="0" value={form.odometer} onChange={(e) => setForm({ ...form, odometer: parseFloat(e.target.value) || '' })} placeholder="e.g. 15000 (km)" required />
             </div>
             <div>
               <label>Acquisition Cost (₹)</label>
-              <input type="number" step="0.01" value={form.acquisitionCost} onChange={(e) => setForm({ ...form, acquisitionCost: parseFloat(e.target.value) || '' })} required />
+              <input type="number" step="0.01" min="0" value={form.acquisitionCost} onChange={(e) => setForm({ ...form, acquisitionCost: parseFloat(e.target.value) || '' })} placeholder="e.g. 2500000 (₹)" required />
             </div>
             <div style={{ gridColumn: 'span 2' }}>
               <label>Status</label>
@@ -274,8 +318,8 @@ const Vehicles = () => {
             <button type="button" onClick={() => setModalOpen(false)} style={{ background: 'transparent', border: '1px solid var(--border-input)', color: 'var(--text-main)', padding: '0.75rem 1.5rem', borderRadius: '8px' }}>
               Cancel
             </button>
-            <button type="submit" style={{ background: 'var(--bg-gradient-primary)', border: 'none', color: '#fff', padding: '0.75rem 1.5rem', borderRadius: '8px', fontWeight: 600, boxShadow: 'var(--shadow-glow-primary)' }}>
-              {editing ? 'Update' : 'Create'}
+            <button type="submit" disabled={submitting} style={{ background: 'var(--bg-gradient-primary)', border: 'none', color: '#fff', padding: '0.75rem 1.5rem', borderRadius: '8px', fontWeight: 600, boxShadow: 'var(--shadow-glow-primary)', opacity: submitting ? 0.7 : 1 }}>
+              {submitting ? 'Verifying with Parivahan...' : (editing ? 'Update' : 'Create')}
             </button>
           </div>
         </form>

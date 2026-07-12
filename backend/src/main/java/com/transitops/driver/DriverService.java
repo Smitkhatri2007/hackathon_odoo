@@ -64,6 +64,7 @@ public class DriverService {
     }
 
     public DriverResponse createDriver(DriverRequest request) {
+        validateDriverDetails(request);
         if (driverRepository.existsByLicenseNumber(request.getLicenseNumber())) {
             throw new DuplicateResourceException(
                     "Driver with license number '" + request.getLicenseNumber() + "' already exists");
@@ -78,6 +79,9 @@ public class DriverService {
 
         Driver driver = new Driver();
         driver.setName(request.getName());
+        if (request.getDob() != null && !request.getDob().isEmpty()) {
+            driver.setDob(LocalDate.parse(request.getDob()));
+        }
         driver.setLicenseNumber(request.getLicenseNumber());
         driver.setLicenseCategory(request.getLicenseCategory());
         driver.setLicenseExpiryDate(LocalDate.parse(request.getLicenseExpiryDate()));
@@ -90,6 +94,7 @@ public class DriverService {
     }
 
     public DriverResponse updateDriver(Long id, DriverRequest request) {
+        validateDriverDetails(request);
         Driver driver = getById(id);
 
         driverRepository.findByLicenseNumber(request.getLicenseNumber())
@@ -108,6 +113,9 @@ public class DriverService {
         }
 
         driver.setName(request.getName());
+        if (request.getDob() != null && !request.getDob().isEmpty()) {
+            driver.setDob(LocalDate.parse(request.getDob()));
+        }
         driver.setLicenseNumber(request.getLicenseNumber());
         driver.setLicenseCategory(request.getLicenseCategory());
         driver.setLicenseExpiryDate(LocalDate.parse(request.getLicenseExpiryDate()));
@@ -122,5 +130,28 @@ public class DriverService {
     public void deleteDriver(Long id) {
         Driver driver = getById(id);
         driverRepository.delete(driver);
+    }
+
+    private void validateDriverDetails(DriverRequest request) {
+        // Validate Phone Number
+        if (request.getContactNumber() == null || !request.getContactNumber().matches("^\\d{10}$")) {
+            throw new BadRequestException("Invalid Phone Number. Must be exactly 10 digits.");
+        }
+
+        // Validate DOB (Must be 18+)
+        if (request.getDob() != null && !request.getDob().isEmpty()) {
+            LocalDate dob = LocalDate.parse(request.getDob());
+            if (dob.plusYears(18).isAfter(LocalDate.now())) {
+                throw new BadRequestException("Driver must be at least 18 years old.");
+            }
+        } else {
+            throw new BadRequestException("Date of Birth (DOB) is required for Parivahan validation.");
+        }
+
+        // Validate License Format (Mock Parivahan API)
+        // Format: AA-00-0000-0000000 (e.g. MH-12-2023-1234567)
+        if (request.getLicenseNumber() == null || !request.getLicenseNumber().matches("^[A-Z]{2}-\\d{2}-\\d{4}-\\d{7}$")) {
+            throw new BadRequestException("Invalid License Number. Failed Parivahan API validation. Format must be XX-00-0000-0000000");
+        }
     }
 }

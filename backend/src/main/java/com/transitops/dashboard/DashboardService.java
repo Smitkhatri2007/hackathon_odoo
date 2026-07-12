@@ -94,8 +94,29 @@ public class DashboardService {
         double utilization = (nonRetired != null && nonRetired > 0 && onTrip != null)
                 ? (onTrip * 100.0) / nonRetired
                 : 0.0;
-        // Round to 2 decimal places
         kpis.put("fleetUtilizationPercent", Math.round(utilization * 100.0) / 100.0);
+
+        // 8. Fuel Efficiency (km/L) = SUM(actual_distance) / SUM(fuel_consumed)
+        Double totalDist = jdbc.queryForObject("SELECT SUM(actual_distance) FROM trips WHERE status = 'COMPLETED'", new MapSqlParameterSource(), Double.class);
+        Double totalFuel = jdbc.queryForObject("SELECT SUM(fuel_consumed) FROM trips WHERE status = 'COMPLETED'", new MapSqlParameterSource(), Double.class);
+        double fuelEfficiency = (totalDist != null && totalFuel != null && totalFuel > 0) ? totalDist / totalFuel : 0.0;
+        kpis.put("fuelEfficiency", Math.round(fuelEfficiency * 100.0) / 100.0);
+
+        // 9. Operational Cost = Fuel Cost + Maintenance Cost + Other Expenses
+        Double fuelCost = jdbc.queryForObject("SELECT SUM(cost) FROM fuel_logs", new MapSqlParameterSource(), Double.class);
+        Double maintCost = jdbc.queryForObject("SELECT SUM(cost) FROM maintenance_logs", new MapSqlParameterSource(), Double.class);
+        Double expCost = jdbc.queryForObject("SELECT SUM(cost) FROM expenses", new MapSqlParameterSource(), Double.class);
+        double totalOpsCost = (fuelCost != null ? fuelCost : 0) + (maintCost != null ? maintCost : 0) + (expCost != null ? expCost : 0);
+        kpis.put("operationalCost", Math.round(totalOpsCost * 100.0) / 100.0);
+
+        // 10. Vehicle ROI = (Revenue - Operational Cost) / Acquisition Cost * 100
+        Double totalRevenue = jdbc.queryForObject("SELECT SUM(revenue) FROM trips", new MapSqlParameterSource(), Double.class);
+        Double acqCost = jdbc.queryForObject("SELECT SUM(acquisition_cost) FROM vehicles WHERE status != 'RETIRED'", new MapSqlParameterSource(), Double.class);
+        
+        double revenue = totalRevenue != null ? totalRevenue : 0;
+        double cost = acqCost != null && acqCost > 0 ? acqCost : 1; // avoid division by zero
+        double roi = ((revenue - totalOpsCost) / cost) * 100.0;
+        kpis.put("vehicleRoi", Math.round(roi * 100.0) / 100.0);
 
         return kpis;
     }

@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import axiosInstance from '../api/axiosInstance';
 import GlassCard from '../components/GlassCard';
 import ModernTable from '../components/ModernTable';
+import { exportToCSV } from '../utils/exportCsv';
 import Modal from '../components/Modal';
+import LocationAutocomplete from '../components/LocationAutocomplete';
 
 export default function Trips() {
   const [trips, setTrips] = useState([]);
@@ -10,6 +12,7 @@ export default function Trips() {
   const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchCategory, setSearchCategory] = useState('all');
 
   // Form state
   const [source, setSource] = useState('');
@@ -167,66 +170,82 @@ export default function Trips() {
     );
   };
 
-  const tableHeaders = ['ID', 'Route', 'Vehicle', 'Driver', 'Cargo', 'Dist.', 'Status', 'Actions'];
-  const renderRow = (t) => (
-    <>
-      <td style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-muted)' }}>#{t.id}</td>
-      <td style={{ padding: '1rem' }}>
-        <div style={{ fontWeight: 500 }}>{t.source}</div>
-        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>to {t.destination}</div>
-      </td>
-      <td style={{ padding: '1rem', color: 'var(--color-info)' }}>ID: {t.vehicleId}</td>
-      <td style={{ padding: '1rem', color: 'var(--color-secondary)' }}>ID: {t.driverId}</td>
-      <td style={{ padding: '1rem' }}>{t.cargoWeight} kg</td>
-      <td style={{ padding: '1rem' }}>{t.plannedDistance} km</td>
-      <td style={{ padding: '1rem' }}>{renderBadge(t.status)}</td>
-      <td style={{ padding: '1rem' }}>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          {t.status === 'DRAFT' && (
-            <button
-              onClick={() => handleDispatchTrip(t.id)}
-              style={{
-                background: 'rgba(99, 102, 241, 0.1)', color: 'var(--color-primary)',
-                border: '1px solid rgba(99,102,241,0.2)', padding: '0.3rem 0.6rem',
-                borderRadius: '6px', fontSize: '0.8rem'
-              }}
-            >
-              Dispatch
-            </button>
-          )}
-          {t.status === 'DISPATCHED' && (
-            <>
-              <button
-                onClick={() => setActiveTripForCompletion(t)}
-                style={{
-                  background: 'rgba(16, 185, 129, 0.1)', color: 'var(--color-success)',
-                  border: '1px solid rgba(16,185,129,0.2)', padding: '0.3rem 0.6rem',
-                  borderRadius: '6px', fontSize: '0.8rem'
-                }}
-              >
-                Complete
-              </button>
-              <button
-                onClick={() => handleCancelTrip(t.id)}
-                style={{
-                  background: 'rgba(239, 68, 68, 0.1)', color: 'var(--color-danger)',
-                  border: '1px solid rgba(239,68,68,0.2)', padding: '0.3rem 0.6rem',
-                  borderRadius: '6px', fontSize: '0.8rem'
-                }}
-              >
-                Cancel
-              </button>
-            </>
-          )}
-        </div>
-      </td>
-    </>
-  );
+  const tableHeaders = ['ID', 'Vehicle', 'Driver', 'Route', 'Revenue', 'Fuel Cost', 'Net Profit', 'Status', 'Actions'];
+  
+  const renderRow = (t) => {
+    const revenueVal = t.revenue || 0;
+    const fuelCost = (t.fuelConsumed || 0) * 100;
+    const netProfit = revenueVal - fuelCost;
 
-  const filteredTrips = trips.filter(t => 
-    t.source.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    t.destination.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+    return (
+      <>
+        <td style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-muted)' }}>#{t.id}</td>
+        <td style={{ padding: '1rem', color: 'var(--color-info)' }}>ID: {t.vehicleId}</td>
+        <td style={{ padding: '1rem', color: 'var(--color-secondary)' }}>ID: {t.driverId}</td>
+        <td style={{ padding: '1rem' }}>
+          <div style={{ fontWeight: 500 }}>{t.source}</div>
+          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>to {t.destination}</div>
+        </td>
+        <td style={{ padding: '1rem', color: 'var(--color-success)' }}>
+          {t.revenue != null ? `₹${t.revenue.toLocaleString('en-IN')}` : '—'}
+        </td>
+        <td style={{ padding: '1rem', color: 'var(--color-danger)' }}>
+          {t.fuelConsumed != null ? `₹${fuelCost.toLocaleString('en-IN')}` : '—'}
+        </td>
+        <td style={{ padding: '1rem', color: netProfit >= 0 ? 'var(--color-success)' : 'var(--color-danger)', fontWeight: 600 }}>
+          {t.revenue != null ? `₹${netProfit.toLocaleString('en-IN')}` : '—'}
+        </td>
+        <td style={{ padding: '1rem' }}>{renderBadge(t.status)}</td>
+        <td style={{ padding: '1rem' }}>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            {t.status === 'DRAFT' && (
+              <button
+                onClick={() => handleDispatchTrip(t.id)}
+                style={{
+                  background: 'rgba(99, 102, 241, 0.1)', color: 'var(--color-primary)',
+                  border: '1px solid rgba(99,102,241,0.2)', padding: '0.3rem 0.6rem',
+                  borderRadius: '6px', fontSize: '0.8rem'
+                }}
+              >
+                Dispatch
+              </button>
+            )}
+            {t.status === 'DISPATCHED' && (
+              <>
+                <button
+                  onClick={() => setActiveTripForCompletion(t)}
+                  style={{
+                    background: 'rgba(16, 185, 129, 0.1)', color: 'var(--color-success)',
+                    border: '1px solid rgba(16,185,129,0.2)', padding: '0.3rem 0.6rem',
+                    borderRadius: '6px', fontSize: '0.8rem'
+                  }}
+                >
+                  Complete
+                </button>
+                <button
+                  onClick={() => handleCancelTrip(t.id)}
+                  style={{
+                    background: 'rgba(239, 68, 68, 0.1)', color: 'var(--color-danger)',
+                    border: '1px solid rgba(239,68,68,0.2)', padding: '0.3rem 0.6rem',
+                    borderRadius: '6px', fontSize: '0.8rem'
+                  }}
+                >
+                  Cancel
+                </button>
+              </>
+            )}
+          </div>
+        </td>
+      </>
+    );
+  };
+
+  const filteredTrips = trips.filter(t => {
+    const q = searchQuery.toLowerCase();
+    if (searchCategory === 'source') return t.source.toLowerCase().includes(q);
+    if (searchCategory === 'destination') return t.destination.toLowerCase().includes(q);
+    return t.source.toLowerCase().includes(q) || t.destination.toLowerCase().includes(q);
+  });
 
   return (
     <div className="page-container animate-fade-in">
@@ -252,11 +271,11 @@ export default function Trips() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
               <div>
                 <label>Source Location *</label>
-                <input value={source} onChange={e => setSource(e.target.value)} placeholder="e.g. Warehouse A" required />
+                <LocationAutocomplete value={source} onChange={setSource} placeholder="e.g. Warehouse A" required={true} />
               </div>
               <div>
                 <label>Destination Location *</label>
-                <input value={destination} onChange={e => setDestination(e.target.value)} placeholder="e.g. Dist. Center B" required />
+                <LocationAutocomplete value={destination} onChange={setDestination} placeholder="e.g. Dist. Center B" required={true} />
               </div>
               <div>
                 <label>Available Vehicle *</label>
@@ -274,15 +293,15 @@ export default function Trips() {
               </div>
               <div>
                 <label>Cargo Weight (kg) *</label>
-                <input type="number" step="any" value={cargoWeight} onChange={e => setCargoWeight(e.target.value)} required />
+                <input type="number" step="any" min="0" value={cargoWeight} onChange={e => setCargoWeight(e.target.value)} placeholder="e.g. 1500" required />
               </div>
               <div>
                 <label>Planned Distance (km) *</label>
-                <input type="number" step="any" value={plannedDistance} onChange={e => setPlannedDistance(e.target.value)} required />
+                <input type="number" step="any" min="0" value={plannedDistance} onChange={e => setPlannedDistance(e.target.value)} placeholder="e.g. 350" required />
               </div>
               <div>
                 <label>Planned Revenue (₹) (Optional)</label>
-                <input type="number" step="any" value={revenue} onChange={e => setRevenue(e.target.value)} />
+                <input type="number" step="any" min="0" value={revenue} onChange={e => setRevenue(e.target.value)} placeholder="e.g. 5000" />
               </div>
             </div>
             <button
@@ -298,14 +317,29 @@ export default function Trips() {
         </GlassCard>
 
         <GlassCard title="Active Operational Trips">
-          <div style={{ marginBottom: '1.5rem' }}>
+          <div style={{ marginBottom: '1.5rem', display: 'flex', gap: '0.5rem' }}>
+            <select 
+              value={searchCategory} 
+              onChange={(e) => setSearchCategory(e.target.value)}
+              style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-input)', background: 'var(--bg-input)', color: 'var(--text-main)', width: '150px' }}
+            >
+              <option value="all">All</option>
+              <option value="source">Source</option>
+              <option value="destination">Destination</option>
+            </select>
             <input 
               type="text" 
-              placeholder="Search by source or destination..." 
+              placeholder="Search trips..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-input)', background: 'var(--bg-input)', color: 'var(--text-main)' }}
+              style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-input)', background: 'var(--bg-input)', color: 'var(--text-main)' }}
             />
+            <button 
+              onClick={() => exportToCSV(filteredTrips, 'trips_export')}
+              style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', border: '1px solid var(--color-success)', background: 'rgba(16, 185, 129, 0.1)', color: 'var(--color-success)', fontWeight: 600, cursor: 'pointer' }}
+            >
+              ↓ Export CSV
+            </button>
           </div>
           {loading ? (
             <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>Loading operational logs...</div>
@@ -320,11 +354,11 @@ export default function Trips() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
             <div>
               <label>Actual Distance (km) *</label>
-              <input type="number" step="any" value={actualDistance} onChange={e => setActualDistance(e.target.value)} required />
+              <input type="number" step="any" min="0" value={actualDistance} onChange={e => setActualDistance(e.target.value)} placeholder="e.g. 360" required />
             </div>
             <div>
               <label>Fuel Consumed (liters) *</label>
-              <input type="number" step="any" value={fuelConsumed} onChange={e => setFuelConsumed(e.target.value)} required />
+              <input type="number" step="any" min="0" value={fuelConsumed} onChange={e => setFuelConsumed(e.target.value)} placeholder="e.g. 45" required />
             </div>
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>

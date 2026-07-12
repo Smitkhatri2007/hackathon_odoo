@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import axiosInstance from '../api/axiosInstance';
 
 const API_BASE = 'http://localhost:8080/api';
 
@@ -81,6 +81,10 @@ const styles = {
   tableTitle: {
     fontSize: '1.15rem',
     fontWeight: 600,
+  },
+  btnGroup: {
+    display: 'flex',
+    gap: '0.5rem',
   },
   exportBtn: {
     padding: '0.5rem 1.25rem',
@@ -230,7 +234,7 @@ export default function Reports() {
     try {
       setLoading(true);
       setError(null);
-      const res = await axios.get(`${API_BASE}${tab.endpoint}`);
+      const res = await axiosInstance.get(tab.endpoint);
 
       if (res.data.success) {
         setData(res.data.data);
@@ -299,12 +303,20 @@ export default function Reports() {
       <div style={styles.tableCard}>
         <div style={styles.tableHeader}>
           <div style={styles.tableTitle}>Fuel Efficiency per Vehicle (km/L)</div>
-          <button
-            style={styles.exportBtn}
-            onClick={() => exportToCSV(rows, 'fuel_efficiency_report')}
-          >
-            📥 Export CSV
-          </button>
+          <div style={styles.btnGroup}>
+            <button
+              style={styles.exportBtn}
+              onClick={() => exportToCSV(rows, 'fuel_efficiency_report')}
+            >
+              📥 CSV
+            </button>
+            <button
+              style={{...styles.exportBtn, background: `linear-gradient(135deg, ${COLORS.primary}, ${COLORS.secondary})`}}
+              onClick={() => window.print()}
+            >
+              🖨️ PDF
+            </button>
+          </div>
         </div>
         {rows.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '2rem', color: COLORS.textMuted }}>
@@ -366,12 +378,20 @@ export default function Reports() {
       <div style={styles.tableCard}>
         <div style={styles.tableHeader}>
           <div style={styles.tableTitle}>Fleet Utilization Overview</div>
-          <button
-            style={styles.exportBtn}
-            onClick={() => exportToCSV(csvData, 'fleet_utilization_report')}
-          >
-            📥 Export CSV
-          </button>
+          <div style={styles.btnGroup}>
+            <button
+              style={styles.exportBtn}
+              onClick={() => exportToCSV(csvData, 'fleet_utilization_report')}
+            >
+              📥 CSV
+            </button>
+            <button
+              style={{...styles.exportBtn, background: `linear-gradient(135deg, ${COLORS.primary}, ${COLORS.secondary})`}}
+              onClick={() => window.print()}
+            >
+              🖨️ PDF
+            </button>
+          </div>
         </div>
         <div style={styles.utilizationCard}>
           <div style={styles.utilizationMetric}>
@@ -419,12 +439,20 @@ export default function Reports() {
       <div style={styles.tableCard}>
         <div style={styles.tableHeader}>
           <div style={styles.tableTitle}>Operational Cost per Vehicle</div>
-          <button
-            style={styles.exportBtn}
-            onClick={() => exportToCSV(rows, 'operational_cost_report')}
-          >
-            📥 Export CSV
-          </button>
+          <div style={styles.btnGroup}>
+            <button
+              style={styles.exportBtn}
+              onClick={() => exportToCSV(rows, 'operational_cost_report')}
+            >
+              📥 CSV
+            </button>
+            <button
+              style={{...styles.exportBtn, background: `linear-gradient(135deg, ${COLORS.primary}, ${COLORS.secondary})`}}
+              onClick={() => window.print()}
+            >
+              🖨️ PDF
+            </button>
+          </div>
         </div>
         {rows.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '2rem', color: COLORS.textMuted }}>

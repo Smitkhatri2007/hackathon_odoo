@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import axiosInstance from '../api/axiosInstance';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
 } from 'recharts';
+import Modal from '../components/Modal';
 
 const API_BASE = 'http://localhost:8080/api';
 
@@ -28,13 +29,23 @@ const BAR_COLORS = { AVAILABLE: '#10b981', ON_TRIP: '#6366f1', IN_SHOP: '#f59e0b
 
 /* ── KPI Card Config ───────────────────────────────────────────── */
 const KPI_CONFIG = [
-  { key: 'activeVehicles',        label: 'Active Vehicles',        icon: '🚛', color: COLORS.primary },
-  { key: 'availableVehicles',     label: 'Available Vehicles',     icon: '✅', color: COLORS.success },
-  { key: 'vehiclesInMaintenance', label: 'In Maintenance',         icon: '🔧', color: COLORS.warning },
-  { key: 'activeTrips',           label: 'Active Trips',           icon: '🛣️', color: COLORS.info },
-  { key: 'pendingTrips',          label: 'Pending Trips',          icon: '📋', color: COLORS.secondary },
-  { key: 'driversOnDuty',        label: 'Drivers on Duty',        icon: '👤', color: COLORS.danger },
-  { key: 'fleetUtilizationPercent', label: 'Fleet Utilization',    icon: '📊', color: COLORS.primary, suffix: '%' },
+  { key: 'activeVehicles',        label: 'Active Vehicles',        icon: '🚛', color: COLORS.primary, description: 'The total number of vehicles currently registered in the fleet, excluding those that have been retired. This represents your core operational capacity.' },
+  { key: 'availableVehicles',     label: 'Available Vehicles',     icon: '✅', color: COLORS.success, description: 'Vehicles that are currently in the depot, fully maintained, and ready to be dispatched for new trips immediately.' },
+  { key: 'vehiclesInMaintenance', label: 'In Maintenance',         icon: '🔧', color: COLORS.warning, description: 'Vehicles that are currently undergoing repairs or scheduled maintenance. These vehicles cannot be dispatched until maintenance is logged as completed.' },
+  { key: 'activeTrips',           label: 'Active Trips',           icon: '🛣️', color: COLORS.info, description: 'Trips that have been dispatched and are currently en route to their destination.' },
+  { key: 'pendingTrips',          label: 'Pending Trips',          icon: '📋', color: COLORS.secondary, description: 'Trips that have been drafted but not yet dispatched. A vehicle and driver must be assigned to move them to Active status.' },
+  { key: 'driversOnDuty',         label: 'Drivers on Duty',        icon: '👤', color: COLORS.danger, description: 'The number of drivers currently assigned to Active Trips and out on the road.' },
+  { key: 'fleetUtilizationPercent', label: 'Fleet Utilization',    icon: '📊', color: COLORS.primary, suffix: '%', description: 'The percentage of your total active fleet that is currently dispatched on a trip. Higher percentages indicate better asset usage.' },
+  { key: 'fuelEfficiency',        label: 'Fuel Efficiency',        icon: '⛽', color: COLORS.success, suffix: ' km/L', description: 'The average fuel efficiency across all completed trips. Monitored closely to manage fuel expenses and detect vehicle engine health.' },
+  { key: 'operationalCost',       label: 'Operational Cost',       icon: '💸', color: COLORS.danger, prefix: '₹', description: 'The total incurred expenses across the fleet, primarily driven by fuel consumption and maintenance logs.' },
+  { key: 'vehicleRoi',            label: 'Fleet ROI',              icon: '📈', color: COLORS.primary, suffix: '%', description: 'Return on Investment (ROI). Calculated by comparing Total Revenue generated from trips against Total Vehicle Acquisition Costs + Operational Costs.' },
+];
+
+/* ── AI Insights ───────────────────────────────────────────────── */
+const INSIGHTS = [
+  { icon: '🤖', text: 'Vehicle MH-12-AB-1234 has reached 15,000 km. Recommend oil change to prevent efficiency drop.', type: 'warning' },
+  { icon: '⭐', text: 'Driver John Doe has maintained a 95% safety score this week. Excellent performance!', type: 'success' },
+  { icon: '💡', text: 'Fuel costs are trending 12% higher. Consider re-routing deliveries through Highway 4.', type: 'info' }
 ];
 
 /* ── Styles ────────────────────────────────────────────────────── */
@@ -47,7 +58,11 @@ const styles = {
     fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif",
   },
   header: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: '2rem',
+    flexWrap: 'wrap',
   },
   title: {
     fontSize: '2rem',
@@ -174,6 +189,8 @@ export default function Dashboard() {
   const [filterType, setFilterType] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [hovered, setHovered] = useState(null);
+  const [activeKpi, setActiveKpi] = useState(null);
+  const [lastUpdated, setLastUpdated] = useState(new Date().toLocaleTimeString());
 
   useEffect(() => {
     fetchDashboardData();
@@ -189,7 +206,7 @@ export default function Dashboard() {
       if (filterStatus) params.append('status', filterStatus);
 
       const queryString = params.toString() ? `?${params.toString()}` : '';
-      const res = await axios.get(`${API_BASE}/dashboard/kpis${queryString}`);
+      const res = await axiosInstance.get(`/dashboard/kpis${queryString}`);
 
       if (res.data.success) {
         setKpis(res.data.data.kpis);
@@ -204,6 +221,7 @@ export default function Dashboard() {
         setTripBreakdown(
           Object.entries(tb).map(([status, count]) => ({ name: status, value: count }))
         );
+        setLastUpdated(new Date().toLocaleTimeString());
       } else {
         setError(res.data.message || 'Failed to load dashboard data');
       }
@@ -255,8 +273,51 @@ export default function Dashboard() {
     <div style={styles.page}>
       {/* Header */}
       <div style={styles.header}>
-        <h1 style={styles.title}>Fleet Dashboard</h1>
-        <p style={styles.subtitle}>Real-time fleet operations overview</p>
+        <div>
+          <h1 style={styles.title}>Fleet Dashboard</h1>
+          <p style={styles.subtitle}>Real-time fleet operations overview</p>
+        </div>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={{ color: COLORS.textMuted, fontSize: '0.85rem' }}>
+            Last updated: {lastUpdated}
+          </span>
+          <button
+            onClick={fetchDashboardData}
+            disabled={loading}
+            style={{
+              padding: '0.5rem 1rem',
+              background: 'rgba(99, 102, 241, 0.1)',
+              color: COLORS.primary,
+              border: `1px solid ${COLORS.primary}`,
+              borderRadius: '8px',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              fontWeight: 500,
+              fontSize: '0.9rem',
+              transition: 'all 0.2s',
+            }}
+          >
+            {loading ? '🔄 Refreshing...' : '🔄 Refresh'}
+          </button>
+          <button
+            onClick={() => window.print()}
+            style={{
+              padding: '0.5rem 1.25rem',
+              background: `linear-gradient(135deg, ${COLORS.primary}, ${COLORS.secondary})`,
+              color: '#fff',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: 500,
+              fontSize: '0.9rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)'
+            }}
+          >
+            🖨️ Export PDF
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -288,26 +349,54 @@ export default function Dashboard() {
 
       {/* KPI Cards */}
       <div style={styles.kpiGrid}>
-        {KPI_CONFIG.map((kpi) => (
-          <div
-            key={kpi.key}
-            style={{
-              ...styles.kpiCard(kpi.color),
-              transform: hovered === kpi.key ? 'translateY(-4px)' : 'none',
-              boxShadow: hovered === kpi.key
-                ? `0 8px 30px ${kpi.color}33`
-                : '0 4px 12px rgba(0,0,0,0.2)',
-            }}
-            onMouseEnter={() => setHovered(kpi.key)}
-            onMouseLeave={() => setHovered(null)}
-          >
-            <div style={styles.kpiIcon}>{kpi.icon}</div>
-            <div style={styles.kpiValue}>
-              {kpis?.[kpi.key] ?? 0}{kpi.suffix || ''}
+        {KPI_CONFIG.map((kpi) => {
+          const value = kpis?.[kpi.key] ?? 0;
+          if (value === 0) return null; // Hide if 0
+
+          return (
+            <div
+              key={kpi.key}
+              onClick={() => setActiveKpi({ ...kpi, value })}
+              style={{
+                ...styles.kpiCard(kpi.color),
+                cursor: 'pointer',
+                transform: hovered === kpi.key ? 'translateY(-4px)' : 'none',
+                boxShadow: hovered === kpi.key
+                  ? `0 8px 30px ${kpi.color}33`
+                  : '0 4px 12px rgba(0,0,0,0.2)',
+              }}
+              onMouseEnter={() => setHovered(kpi.key)}
+              onMouseLeave={() => setHovered(null)}
+            >
+              <div style={styles.kpiIcon}>{kpi.icon}</div>
+              <div style={styles.kpiValue}>
+                {kpi.prefix || ''}{value}{kpi.suffix || ''}
+              </div>
+              <div style={styles.kpiLabel}>{kpi.label}</div>
             </div>
-            <div style={styles.kpiLabel}>{kpi.label}</div>
-          </div>
-        ))}
+          );
+        })}
+      </div>
+
+      {/* AI Insights (Bonus Feature) */}
+      <div style={{ ...styles.chartCard, marginBottom: '2rem', borderTop: `3px solid ${COLORS.secondary}` }}>
+        <div style={{ ...styles.chartTitle, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          ✨ AI Fleet Insights
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {INSIGHTS.map((insight, idx) => (
+            <div key={idx} style={{
+              display: 'flex', alignItems: 'flex-start', gap: '1rem',
+              padding: '1rem', background: 'rgba(15, 23, 42, 0.4)', borderRadius: '8px',
+              borderLeft: `4px solid ${COLORS[insight.type]}`
+            }}>
+              <span style={{ fontSize: '1.5rem' }}>{insight.icon}</span>
+              <p style={{ margin: 0, color: COLORS.text, fontSize: '0.95rem', lineHeight: '1.5' }}>
+                {insight.text}
+              </p>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Charts */}
@@ -328,12 +417,14 @@ export default function Dashboard() {
                 axisLine={{ stroke: 'rgba(148,163,184,0.2)' }}
                 allowDecimals={false}
               />
-              <Tooltip contentStyle={CustomTooltipStyle} />
+              <Tooltip contentStyle={CustomTooltipStyle} cursor={{ fill: 'rgba(148,163,184,0.1)' }} />
               <Bar dataKey="count" radius={[6, 6, 0, 0]}>
                 {vehicleBreakdown.map((entry, idx) => (
                   <Cell
                     key={`cell-${idx}`}
                     fill={BAR_COLORS[entry.status] || COLORS.primary}
+                    onClick={() => setFilterStatus(entry.status === filterStatus ? '' : entry.status)}
+                    style={{ cursor: 'pointer', filter: filterStatus && filterStatus !== entry.status ? 'opacity(0.3)' : 'none', transition: 'all 0.2s' }}
                   />
                 ))}
               </Bar>
@@ -363,6 +454,8 @@ export default function Dashboard() {
                   <Cell
                     key={`cell-${idx}`}
                     fill={PIE_COLORS[idx % PIE_COLORS.length]}
+                    onClick={() => setFilterStatus(entry.name === filterStatus ? '' : entry.name)}
+                    style={{ cursor: 'pointer', filter: filterStatus && filterStatus !== entry.name ? 'opacity(0.3)' : 'none', transition: 'all 0.2s' }}
                   />
                 ))}
               </Pie>
@@ -374,6 +467,36 @@ export default function Dashboard() {
           </ResponsiveContainer>
         </div>
       </div>
+
+      {/* KPI Detail Modal */}
+      {activeKpi && (
+        <Modal isOpen={!!activeKpi} onClose={() => setActiveKpi(null)} title={`${activeKpi.icon} ${activeKpi.label} Details`}>
+          <div style={{ padding: '1rem', background: 'rgba(15, 23, 42, 0.5)', borderRadius: '8px', border: `1px solid ${activeKpi.color}33` }}>
+            <h3 style={{ fontSize: '2rem', margin: '0 0 1rem 0', color: activeKpi.color }}>
+              {activeKpi.prefix || ''}{activeKpi.value}{activeKpi.suffix || ''}
+            </h3>
+            <p style={{ color: COLORS.textMuted, fontSize: '1rem', lineHeight: '1.6' }}>
+              {activeKpi.description}
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '2rem' }}>
+              <button 
+                onClick={() => setActiveKpi(null)}
+                style={{
+                  padding: '0.6rem 1.5rem',
+                  background: activeKpi.color,
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

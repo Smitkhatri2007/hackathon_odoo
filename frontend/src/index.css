@@ -16,12 +16,12 @@
   --color-muted: #64748b;
   
   /* Backgrounds */
-  --bg-main: #0f172a;
-  --bg-card: rgba(30, 41, 59, 0.7);
-  --bg-card-hover: rgba(30, 41, 59, 0.9);
-  --bg-input: rgba(15, 23, 42, 0.6);
-  --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
-  --bg-gradient-primary: linear-gradient(135deg, #6366f1, #8b5cf6);
+  --bg-main: #060913;
+  --bg-card: rgba(17, 24, 39, 0.65);
+  --bg-card-hover: rgba(31, 41, 55, 0.85);
+  --bg-input: rgba(15, 23, 42, 0.7);
+  --bg-gradient: radial-gradient(circle at top right, #1e1b4b 0%, #060913 60%), radial-gradient(circle at bottom left, #31134a 0%, #060913 60%);
+  --bg-gradient-primary: linear-gradient(135deg, #6366f1 0%, #d946ef 100%);
   
   /* Borders */
   --border-card: rgba(99, 102, 241, 0.2);
@@ -33,10 +33,11 @@
   --text-muted: #94a3b8;
   
   /* Shadows */
-  --shadow-sm: 0 2px 4px rgba(0,0,0,0.1);
-  --shadow-md: 0 4px 6px rgba(0,0,0,0.1);
-  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1);
-  --shadow-glow-primary: 0 0 15px rgba(99, 102, 241, 0.4);
+  --shadow-sm: 0 2px 4px rgba(0,0,0,0.2);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.3);
+  --shadow-lg: 0 10px 25px -5px rgba(0,0,0,0.4);
+  --shadow-glow-primary: 0 0 25px rgba(217, 70, 239, 0.4);
+  --shadow-glow-card: 0 0 15px rgba(99, 102, 241, 0.15);
   
   /* Fonts */
   --font-sans: 'Inter', system-ui, sans-serif;
@@ -100,6 +101,24 @@ button {
 
 .animate-fade-in {
   animation: fadeIn 0.4s ease-out forwards;
+}
+
+tbody tr {
+  transition: all 0.25s ease;
+}
+
+tbody tr:hover {
+  background: rgba(99, 102, 241, 0.08);
+  transform: scale(1.005);
+}
+
+button {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+button:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.1);
 }
 
 /* Utility Classes */

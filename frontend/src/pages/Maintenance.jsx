@@ -2,9 +2,12 @@ import { useState, useEffect } from 'react';
 import axiosInstance from '../api/axiosInstance';
 import GlassCard from '../components/GlassCard';
 import ModernTable from '../components/ModernTable';
+import { exportToCSV } from '../utils/exportCsv';
 
 export default function Maintenance() {
     const [records, setRecords] = useState([]);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchCategory, setSearchCategory] = useState('all');
     const [form, setForm] = useState({ vehicleId: '', type: '', description: '', cost: '' });
     const [loading, setLoading] = useState(false);
     const [notification, setNotification] = useState(null);
@@ -113,6 +116,13 @@ export default function Maintenance() {
         </>
     );
 
+    const filteredRecords = records.filter(r => {
+        const q = searchQuery.toLowerCase();
+        if (searchCategory === 'vehicleId') return String(r.vehicleId).includes(q);
+        if (searchCategory === 'description') return (r.description && r.description.toLowerCase().includes(q));
+        return String(r.vehicleId).includes(q) || (r.description && r.description.toLowerCase().includes(q));
+    });
+
     return (
         <div className="page-container animate-fade-in">
             <div style={{ marginBottom: '2rem' }}>
@@ -137,7 +147,7 @@ export default function Maintenance() {
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
                             <div>
                                 <label>Vehicle ID</label>
-                                <input name="vehicleId" type="number" placeholder="e.g. 1" value={form.vehicleId} onChange={handleChange} required />
+                                <input name="vehicleId" type="number" min="0" placeholder="e.g. 1" value={form.vehicleId} onChange={handleChange} required />
                             </div>
                             <div>
                                 <label>Type</label>
@@ -149,7 +159,7 @@ export default function Maintenance() {
                             </div>
                             <div>
                                 <label>Cost (₹)</label>
-                                <input name="cost" type="number" step="0.01" placeholder="0.00" value={form.cost} onChange={handleChange} />
+                                <input name="cost" type="number" step="0.01" min="0" placeholder="0.00" value={form.cost} onChange={handleChange} />
                             </div>
                         </div>
                         <button type="submit" disabled={loading} style={{
@@ -163,7 +173,31 @@ export default function Maintenance() {
                 </GlassCard>
 
                 <GlassCard title="Maintenance Records">
-                    <ModernTable headers={tableHeaders} data={records} renderRow={renderRow} emptyMessage="No maintenance records found." />
+                    <div style={{ marginBottom: '1.5rem', display: 'flex', gap: '0.5rem' }}>
+                        <select 
+                            value={searchCategory} 
+                            onChange={(e) => setSearchCategory(e.target.value)}
+                            style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-input)', background: 'var(--bg-input)', color: 'var(--text-main)', width: '150px' }}
+                        >
+                            <option value="all">All</option>
+                            <option value="vehicleId">Vehicle ID</option>
+                            <option value="description">Description</option>
+                        </select>
+                        <input 
+                            type="text" 
+                            placeholder="Search records..." 
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-input)', background: 'var(--bg-input)', color: 'var(--text-main)' }}
+                        />
+                        <button 
+                            onClick={() => exportToCSV(filteredRecords, 'maintenance_export')}
+                            style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', border: '1px solid var(--color-success)', background: 'rgba(16, 185, 129, 0.1)', color: 'var(--color-success)', fontWeight: 600, cursor: 'pointer' }}
+                        >
+                            ↓ Export CSV
+                        </button>
+                    </div>
+                    <ModernTable headers={tableHeaders} data={filteredRecords} renderRow={renderRow} emptyMessage="No maintenance records match your search." />
                 </GlassCard>
             </div>
         </div>

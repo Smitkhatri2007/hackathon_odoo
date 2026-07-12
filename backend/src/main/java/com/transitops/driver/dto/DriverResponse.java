@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 public class DriverResponse {
     private Long id;
     private String name;
+    private String dob;
     private String licenseNumber;
     private String licenseCategory;
     private String licenseExpiryDate;
@@ -22,6 +23,7 @@ public class DriverResponse {
         return new DriverResponse(
                 driver.getId(),
                 driver.getName(),
+                driver.getDob() != null ? driver.getDob().toString() : null,
                 driver.getLicenseNumber(),
                 driver.getLicenseCategory(),
                 driver.getLicenseExpiryDate().toString(),

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import axiosInstance from '../api/axiosInstance';
 import GlassCard from '../components/GlassCard';
 import ModernTable from '../components/ModernTable';
+import { exportToCSV } from '../utils/exportCsv';
 
 export default function FuelExpense() {
     const [fuelLogs, setFuelLogs] = useState([]);
@@ -9,6 +10,10 @@ export default function FuelExpense() {
 
     const [expenses, setExpenses] = useState([]);
     const [expenseForm, setExpenseForm] = useState({ vehicleId: '', type: '', cost: '', logDate: '' });
+
+    const [fuelSearchQuery, setFuelSearchQuery] = useState('');
+    const [expenseSearchQuery, setExpenseSearchQuery] = useState('');
+    const [expenseSearchCategory, setExpenseSearchCategory] = useState('all');
 
     const [notification, setNotification] = useState(null);
 
@@ -99,6 +104,17 @@ export default function FuelExpense() {
         </>
     );
 
+    const filteredFuelLogs = fuelLogs.filter(f => 
+        String(f.vehicleId).includes(fuelSearchQuery)
+    );
+
+    const filteredExpenses = expenses.filter(ex => {
+        const q = expenseSearchQuery.toLowerCase();
+        if (expenseSearchCategory === 'vehicleId') return String(ex.vehicleId).includes(q);
+        if (expenseSearchCategory === 'type') return ex.type && ex.type.toLowerCase().includes(q);
+        return String(ex.vehicleId).includes(q) || (ex.type && ex.type.toLowerCase().includes(q));
+    });
+
     return (
         <div className="page-container animate-fade-in">
             <div style={{ marginBottom: '2rem' }}>
@@ -123,15 +139,15 @@ export default function FuelExpense() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
                             <div>
                                 <label>Vehicle ID</label>
-                                <input name="vehicleId" type="number" placeholder="e.g. 1" value={fuelForm.vehicleId} onChange={handleFuelChange} required />
+                                <input name="vehicleId" type="number" min="0" placeholder="e.g. 1" value={fuelForm.vehicleId} onChange={handleFuelChange} required />
                             </div>
                             <div>
                                 <label>Liters</label>
-                                <input name="liters" type="number" step="0.01" placeholder="0.00" value={fuelForm.liters} onChange={handleFuelChange} required />
+                                <input name="liters" type="number" step="0.01" min="0" placeholder="0.00" value={fuelForm.liters} onChange={handleFuelChange} required />
                             </div>
                             <div>
                                 <label>Cost (₹)</label>
-                                <input name="cost" type="number" step="0.01" placeholder="0.00" value={fuelForm.cost} onChange={handleFuelChange} required />
+                                <input name="cost" type="number" step="0.01" min="0" placeholder="0.00" value={fuelForm.cost} onChange={handleFuelChange} required />
                             </div>
                             <div>
                                 <label>Date</label>
@@ -149,7 +165,7 @@ export default function FuelExpense() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
                             <div>
                                 <label>Vehicle ID</label>
-                                <input name="vehicleId" type="number" placeholder="e.g. 1" value={expenseForm.vehicleId} onChange={handleExpenseChange} required />
+                                <input name="vehicleId" type="number" min="0" placeholder="e.g. 1" value={expenseForm.vehicleId} onChange={handleExpenseChange} required />
                             </div>
                             <div>
                                 <label>Type</label>
@@ -157,7 +173,7 @@ export default function FuelExpense() {
                             </div>
                             <div>
                                 <label>Cost (₹)</label>
-                                <input name="cost" type="number" step="0.01" placeholder="0.00" value={expenseForm.cost} onChange={handleExpenseChange} required />
+                                <input name="cost" type="number" step="0.01" min="0" placeholder="0.00" value={expenseForm.cost} onChange={handleExpenseChange} required />
                             </div>
                             <div>
                                 <label>Date</label>
@@ -171,11 +187,50 @@ export default function FuelExpense() {
                 </GlassCard>
 
                 <GlassCard title="Fuel Log History">
-                    <ModernTable headers={fuelHeaders} data={fuelLogs} renderRow={fuelRow} emptyMessage="No fuel logs found." />
+                    <div style={{ marginBottom: '1.5rem' }}>
+                        <input 
+                            type="text" 
+                            placeholder="Search by vehicle ID..." 
+                            value={fuelSearchQuery}
+                            onChange={(e) => setFuelSearchQuery(e.target.value)}
+                            style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-input)', background: 'var(--bg-input)', color: 'var(--text-main)' }}
+                        />
+                        <button 
+                            onClick={() => exportToCSV(filteredFuelLogs, 'fuel_logs')}
+                            style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', border: '1px solid var(--color-success)', background: 'rgba(16, 185, 129, 0.1)', color: 'var(--color-success)', fontWeight: 600, cursor: 'pointer', marginLeft: '0.5rem' }}
+                        >
+                            ↓ Export CSV
+                        </button>
+                    </div>
+                    <ModernTable headers={fuelHeaders} data={filteredFuelLogs} renderRow={fuelRow} emptyMessage="No fuel logs match your search." />
                 </GlassCard>
 
                 <GlassCard title="Expense History">
-                    <ModernTable headers={expHeaders} data={expenses} renderRow={expRow} emptyMessage="No expenses found." />
+                    <div style={{ marginBottom: '1.5rem', display: 'flex', gap: '0.5rem' }}>
+                        <select 
+                            value={expenseSearchCategory} 
+                            onChange={(e) => setExpenseSearchCategory(e.target.value)}
+                            style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-input)', background: 'var(--bg-input)', color: 'var(--text-main)', width: '150px' }}
+                        >
+                            <option value="all">All</option>
+                            <option value="vehicleId">Vehicle ID</option>
+                            <option value="type">Type</option>
+                        </select>
+                        <input 
+                            type="text" 
+                            placeholder="Search expenses..." 
+                            value={expenseSearchQuery}
+                            onChange={(e) => setExpenseSearchQuery(e.target.value)}
+                            style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-input)', background: 'var(--bg-input)', color: 'var(--text-main)' }}
+                        />
+                        <button 
+                            onClick={() => exportToCSV(filteredExpenses, 'expenses')}
+                            style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', border: '1px solid var(--color-success)', background: 'rgba(16, 185, 129, 0.1)', color: 'var(--color-success)', fontWeight: 600, cursor: 'pointer' }}
+                        >
+                            ↓ Export CSV
+                        </button>
+                    </div>
+                    <ModernTable headers={expHeaders} data={filteredExpenses} renderRow={expRow} emptyMessage="No expenses match your search." />
                 </GlassCard>
             </div>
         </div>

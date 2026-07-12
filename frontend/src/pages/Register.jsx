@@ -3,33 +3,50 @@ import { useNavigate, Link } from 'react-router-dom';
 import axiosInstance from '../api/axiosInstance';
 import GlassCard from '../components/GlassCard';
 
-export default function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+export default function Register() {
+  const [form, setForm] = useState({
+    name: '',
+    email: '',
+    password: '',
+    role: 'DRIVER'
+  });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [verifyingGoogle, setVerifyingGoogle] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogin = async (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault();
     setError('');
 
-    if (!email.trim() || !password) {
-      setError('Please enter both email and password.');
+    // Validations
+    if (!form.name.trim()) {
+      setError('Name is required.');
       return;
     }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      setError('Please enter a valid email address.');
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
+    if (!emailRegex.test(form.email.toLowerCase())) {
+      setError('Only @gmail.com accounts are allowed.');
+      return;
+    }
+    if (form.password.length < 4) {
+      setError('Password must be at least 4 characters long.');
       return;
     }
 
     try {
       setLoading(true);
-      const res = await axiosInstance.post('/auth/login', { email, password });
+      setVerifyingGoogle(true);
+      
+      // Call mock Google API
+      await axiosInstance.post('/auth/verify-google', { email: form.email });
+      
+      setVerifyingGoogle(false);
+      
+      const res = await axiosInstance.post('/auth/register', form);
       
       if (res.data.success) {
+        // Automatically log them in by saving token and redirecting
         const token = res.data.data.token;
         const user = res.data.data.user;
         
@@ -38,12 +55,14 @@ export default function Login() {
         
         navigate('/dashboard', { replace: true });
       } else {
-        setError(res.data.message || 'Login failed.');
+        setError(res.data.message || 'Registration failed.');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Invalid credentials or server error.');
+      setVerifyingGoogle(false);
+      setError(err.response?.data?.message || 'Email might already be in use or server error.');
     } finally {
       setLoading(false);
+      setVerifyingGoogle(false);
     }
   };
 
@@ -68,7 +87,7 @@ export default function Login() {
             WebkitTextFillColor: 'transparent',
             marginBottom: '0.5rem'
           }}>TransitOps</h1>
-          <p style={{ color: 'var(--text-muted)' }}>Sign in to manage your fleet</p>
+          <p style={{ color: 'var(--text-muted)' }}>Create a new account</p>
         </div>
 
         <GlassCard>
@@ -78,14 +97,25 @@ export default function Login() {
             </div>
           )}
 
-          <form onSubmit={handleLogin}>
+          <form onSubmit={handleRegister}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div>
+                <label>Full Name</label>
+                <input 
+                  type="text" 
+                  value={form.name} 
+                  onChange={(e) => setForm({...form, name: e.target.value})} 
+                  placeholder="e.g. John Doe"
+                  required 
+                  disabled={loading}
+                />
+              </div>
               <div>
                 <label>Email Address</label>
                 <input 
                   type="email" 
-                  value={email} 
-                  onChange={(e) => setEmail(e.target.value)} 
+                  value={form.email} 
+                  onChange={(e) => setForm({...form, email: e.target.value})} 
                   placeholder="e.g. john@transitops.com"
                   required 
                   disabled={loading}
@@ -95,13 +125,27 @@ export default function Login() {
                 <label>Password</label>
                 <input 
                   type="password" 
-                  value={password} 
-                  onChange={(e) => setPassword(e.target.value)} 
+                  value={form.password} 
+                  onChange={(e) => setForm({...form, password: e.target.value})} 
                   placeholder="e.g. *********"
                   required 
                   disabled={loading}
                 />
               </div>
+              <div>
+                <label>Role</label>
+                <select 
+                  value={form.role} 
+                  onChange={(e) => setForm({...form, role: e.target.value})}
+                  disabled={loading}
+                >
+                  <option value="DRIVER" style={{ background: 'var(--bg-main)' }}>DRIVER</option>
+                  <option value="FLEET_MANAGER" style={{ background: 'var(--bg-main)' }}>FLEET MANAGER</option>
+                  <option value="SAFETY_OFFICER" style={{ background: 'var(--bg-main)' }}>SAFETY OFFICER</option>
+                  <option value="FINANCIAL_ANALYST" style={{ background: 'var(--bg-main)' }}>FINANCIAL ANALYST</option>
+                </select>
+              </div>
+              
               <button 
                 type="submit" 
                 disabled={loading}
@@ -121,14 +165,14 @@ export default function Login() {
                   transition: 'all 0.2s ease'
                 }}
               >
-                {loading ? 'Authenticating...' : 'Sign In'}
+                {verifyingGoogle ? 'Verifying with Google API...' : (loading ? 'Creating Account...' : 'Sign Up')}
               </button>
             </div>
           </form>
 
           <div style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.9rem' }}>
-            <span style={{ color: 'var(--text-muted)' }}>Don't have an account? </span>
-            <Link to="/register" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>Sign up here</Link>
+            <span style={{ color: 'var(--text-muted)' }}>Already have an account? </span>
+            <Link to="/login" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>Sign in here</Link>
           </div>
         </GlassCard>
       </div>

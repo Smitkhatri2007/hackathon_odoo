@@ -9,6 +9,8 @@ public class DriverRequest {
     @NotBlank(message = "Name is required")
     private String name;
 
+    private String dob;
+
     @NotBlank(message = "License number is required")
     private String licenseNumber;
 
